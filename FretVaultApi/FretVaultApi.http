@@ -1,0 +1,6 @@
+@FretVaultApi_HostAddress = http://localhost:5229
+
+GET {{FretVaultApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
