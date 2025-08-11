@@ -29,6 +29,8 @@
     "@prisma/client": "^6.13.0",
     "@types/bcrypt": "^6.0.0",
     "bcrypt": "^6.0.0",
+    "class-validator": "^0.14.2",
+    "dotenv": "^17.2.1",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "prisma": "^6.13.0",
