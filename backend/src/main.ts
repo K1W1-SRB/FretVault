@@ -3,10 +3,13 @@ import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { PrismaClient } from '@prisma/client';
 import * as dotenv from 'dotenv';
+import cookieParser from 'cookie-parser';
+
 dotenv.config();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.use(cookieParser());
 
   const config = new DocumentBuilder()
     .setTitle('FretVault')

@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Request } from 'express';
+import { PrismaService } from 'prisma/prisma.service';
 
 function cookieExtractor(req: Request): string | null {
   if (req && req.cookies) return req.cookies['access_token'] ?? null;
@@ -11,7 +12,7 @@ function cookieExtractor(req: Request): string | null {
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor() {
+  constructor(private readonly prisma: PrismaService) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([cookieExtractor]),
       ignoreExpiration: false,
@@ -20,8 +21,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    // whatever you want to expose as req.user
-    const { sub: id, email } = payload;
-    return { id, email };
+    return this.prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        accountType: true,
+        avatar: true,
+      },
+    });
   }
 }

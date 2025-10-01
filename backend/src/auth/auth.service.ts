@@ -14,8 +14,8 @@ export class AuthService {
   ) {}
 
   private toAuthUser(user: any): AuthUser {
-    const { id, email, firstName, lastName } = user;
-    return { id, email, firstName, lastName };
+    const { id, email, name, avatar, accountType } = user;
+    return { id, email, name, avatar, accountType };
   }
 
   async validateUser(email: string, pass: string): Promise<AuthUser> {
@@ -36,19 +36,17 @@ export class AuthService {
       sameSite: 'lax' as const,
       path: '/',
       maxAge: 60 * 60 * 1000, // 1 hour
-      // domain: process.env.COOKIE_DOMAIN, // if you need cross-subdomain
     };
     return { accessToken, cookieOptions };
   }
 
-  // Kept for register; no token here
   async register(dto: RegisterDto): Promise<AuthUser> {
-    const { email, password, firstName, lastName } = dto;
+    const { email, password, name, accountType, avatar } = dto;
     const salt = await bcrypt.genSalt();
     const hashedPassword = await bcrypt.hash(password, salt);
 
     const user = await this.prisma.user.create({
-      data: { email, firstName, lastName, password: hashedPassword },
+      data: { email, name, accountType, avatar, password: hashedPassword },
     });
 
     return this.toAuthUser(user);

@@ -56,6 +56,6 @@ export class AuthController {
   async me(
     @Req() req: authenticatedRequestType.AuthenticatedRequest,
   ): Promise<UserSafeDto> {
-    return req.user as unknown as UserSafeDto;
+    return req.user;
   }
 }

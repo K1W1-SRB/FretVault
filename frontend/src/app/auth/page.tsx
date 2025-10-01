@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Github, Loader2 } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -11,9 +11,15 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_BACKEND_API ?? "https://localhost:4000";
@@ -26,11 +32,12 @@ const loginSchema = z.object({
 type LoginValues = z.infer<typeof loginSchema>;
 
 const registerSchema = z.object({
+  name: z.string().min(1, "Name is required"),
   email: z.string().email("Enter a valid email"),
   password: z.string().min(8, "Min 8 characters"),
-  // Add confirm if you want:
-  // confirm: z.string()
-  // }).refine((d) => d.password === d.confirm, { path: ["confirm"], message: "Passwords do not match" })
+  accountType: z
+    .enum(["personal", "group"])
+    .refine((val) => val !== undefined, { message: "Select an account type" }),
 });
 type RegisterValues = z.infer<typeof registerSchema>;
 
@@ -49,6 +56,7 @@ export default function AuthPage() {
   const {
     register: regReg,
     handleSubmit: handleRegisterSubmit,
+    control,
     formState: { errors: regErr, isSubmitting: registering },
     reset: resetRegister,
   } = useForm<RegisterValues>({ resolver: zodResolver(registerSchema) });
@@ -246,6 +254,21 @@ export default function AuthPage() {
                     onSubmit={handleRegisterSubmit(onRegister)}
                   >
                     <div className="space-y-2">
+                      <Label htmlFor="reg-mame">Name</Label>
+                      <Input
+                        id="reg-name"
+                        type="name"
+                        placeholder="Joe Doe"
+                        {...regReg("name")}
+                      />
+                      {regErr.name && (
+                        <p className="text-sm text-destructive">
+                          {regErr.name.message}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
                       <Label htmlFor="reg-email">Email</Label>
                       <Input
                         id="reg-email"
@@ -271,6 +294,33 @@ export default function AuthPage() {
                       {regErr.password && (
                         <p className="text-sm text-destructive">
                           {regErr.password.message}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="reg-accountType">Account Type</Label>
+                      <Controller
+                        control={control} // from useForm
+                        name="accountType"
+                        render={({ field }) => (
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Account" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="personal">Personal</SelectItem>
+                              <SelectItem value="group">Group</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                      {regErr.accountType && (
+                        <p className="text-sm text-destructive">
+                          {regErr.accountType.message}
                         </p>
                       )}
                     </div>
