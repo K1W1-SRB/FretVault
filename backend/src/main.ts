@@ -24,7 +24,10 @@ async function bootstrap() {
   await prisma.$connect();
   console.log('✅ Connected to Postgres DB');
 
-  app.enableCors();
+  app.enableCors({
+    origin: process.env.WEB_ORIGIN ?? 'http://localhost:3000',
+    credentials: true, // allow cookies
+  });
   await app.listen(process.env.PORT ?? 4000);
 }
 bootstrap();

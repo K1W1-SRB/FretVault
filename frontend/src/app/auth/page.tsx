@@ -69,7 +69,7 @@ export default function AuthPage() {
       }
       toast.success("Logged in!");
       // Redirect if you like:
-      // window.location.href = "/";
+      window.location.href = "/dashboard";
       resetLogin();
     } catch (e: any) {
       toast.error(e.message || "Something went wrong");
