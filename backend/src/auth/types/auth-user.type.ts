@@ -3,6 +3,7 @@
 export type AuthUser = {
   id: string | number; // match your Prisma schema
   email: string;
-  firstName: string;
-  lastName: string;
+  name: string;
+  accountType: string;
+  avatar: string | null;
 };
