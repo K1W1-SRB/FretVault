@@ -29,6 +29,7 @@ import {
   Library,
   FileText,
   Settings,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -41,16 +42,17 @@ import { Avatar } from "./ui/avatar";
 import { AvatarFallback } from "@radix-ui/react-avatar";
 import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
+import { useRouter } from "next/navigation";
 
 // ------------------ Navigation structure ------------------
 const navMain = [
   {
     title: "Zones",
-    href: "/app/zones",
+    href: "zones",
     icon: Guitar,
     items: [
-      { title: "Practice Zone", href: "/app/zones/practice" },
-      { title: "Performance Zone", href: "/app/zones/performance" },
+      { title: "Practice Zone", href: "/zones/practice" },
+      { title: "Performance Zone", href: "/zones/performance" },
     ],
   },
   {
@@ -60,7 +62,7 @@ const navMain = [
   },
   {
     title: "Practise Session",
-    href: "/app/practise",
+    href: "/practise",
     icon: Timer,
   },
   {
@@ -70,16 +72,16 @@ const navMain = [
   },
   {
     title: "Documentation",
-    href: "/app/docs",
+    href: "/docs",
     icon: FileText,
     items: [
-      { title: "API Reference", href: "/app/docs/api" },
-      { title: "Guides", href: "/app/docs/guides" },
+      { title: "API Reference", href: "/docs/api" },
+      { title: "Guides", href: "/docs/guides" },
     ],
   },
   {
     title: "Settings",
-    href: "/app/settings",
+    href: "/settings",
     icon: Settings,
   },
 ];
@@ -121,27 +123,48 @@ export function AppSidebar() {
     fetchUser();
   }, []);
 
+  const router = useRouter();
+
+  async function handleLogout() {
+    await fetch(process.env.NEXT_PUBLIC_BACKEND_API + "/auth/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+    router.push("/auth");
+  }
+
   const displayName = user?.name || "Unknown User";
   const initials = getInitials(displayName);
   return (
     <Sidebar collapsible="icon">
       {/* Header with profile */}
-      <SidebarHeader className="flex flex-row">
-        <div className="flex items-center gap-3 px-2 py-2">
-          <Avatar className="h-8 w-8 flex justify-center items-center bg-green-500">
-            <AvatarFallback>{initials}</AvatarFallback>
-          </Avatar>
-          <div className="flex flex-col">
-            <span className="text-sm font-medium leading-tight">
-              {user?.name}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {user?.accountType || "Personal"}
-            </span>
+      <SidebarHeader>
+        <div className="flex w-full items-center px-2 py-2">
+          {/* Profile info */}
+          <div className="flex items-center gap-3">
+            <Avatar className="h-8 w-8 flex justify-center items-center bg-green-500">
+              <AvatarFallback>{initials}</AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col">
+              <span className="text-sm font-medium leading-tight">
+                {user?.name}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {user?.accountType || "Personal"}
+              </span>
+            </div>
           </div>
-        </div>
-        <div className="">
-          <Code className="mx-auto w-4 h-4 " />
+
+          {/* Logout button aligned right */}
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={handleLogout}
+            title="Logout"
+            className="ml-auto"
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
         </div>
       </SidebarHeader>
 

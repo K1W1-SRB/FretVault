@@ -105,10 +105,6 @@ export default function AuthPage() {
     }
   }
 
-  function onGithub() {
-    window.location.href = `${API_BASE}/auth/github`;
-  }
-
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-[95vw] h-[90vh] p-0 gap-0 overflow-hidden rounded-3xl border bg-card shadow-xl">
@@ -142,18 +138,6 @@ export default function AuthPage() {
 
           {/* RIGHT PANE */}
           <div className="relative flex h-full items-center justify-center bg-background p-8">
-            {/* Optional: remove since tabs exist */}
-            <Link
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                setTab("login");
-              }}
-              className="absolute right-8 top-8 text-sm text-muted-foreground hover:underline"
-            >
-              Login
-            </Link>
-
             <div className="w-full max-w-sm space-y-6">
               <div className="text-center space-y-1">
                 <h1 className="text-2xl font-semibold">
@@ -227,23 +211,6 @@ export default function AuthPage() {
                         "Sign in"
                       )}
                     </Button>
-
-                    {/* <div className="relative">
-                      <Separator />
-                      <span className="absolute inset-x-0 -top-2 mx-auto w-max bg-background px-2 text-[11px] tracking-wide text-muted-foreground">
-                        OR CONTINUE WITH
-                      </span>
-                    </div>
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full justify-center gap-2"
-                      onClick={onGithub}
-                    >
-                      <Github className="h-4 w-4" />
-                      GitHub
-                    </Button> */}
                   </form>
                 </TabsContent>
 
