@@ -23,4 +23,64 @@ model User {
   name        String
   accountType String
   avatar      String?
+  Song        Song[]
+}
+
+model Song {
+  id         Int        @id @default(autoincrement())
+  title      String
+  artist     String?
+  ownerId    Int
+  owner      User       @relation(fields: [ownerId], references: [id])
+  visibility Visibility @default(PRIVATE)
+
+  tempo      Int?
+  key        String?
+  capo       Int?
+  timeSigTop Int?
+  timeSigBot Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tabs Tab[]
+  tags String[] @default([])
+}
+
+enum Visibility {
+  PRIVATE
+  UNLISTED
+  PUBLIC
+}
+
+model Tab {
+  id     Int  @id @default(autoincrement())
+  songId Int
+  song   Song @relation(fields: [songId], references: [id])
+
+  title      String // e.g. "Acoustic version"
+  tuning     String // "EADGBE"
+  tempo      Int?
+  timeSigTop Int?
+  timeSigBot Int?
+  capo       Int?   @default(0)
+
+  currentRev Int? // pointer to latest TabRevision
+  revisions  TabRevision[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TabRevision {
+  id        Int      @id @default(autoincrement())
+  tabId     Int
+  tab       Tab      @relation(fields: [tabId], references: [id])
+  number    Int
+  message   String?
+  score     Json // canonical JSON representation
+  createdBy Int
+  createdAt DateTime @default(now())
+
+  @@unique([tabId, number])
 }
