@@ -65,7 +65,7 @@ model Tab {
   timeSigBot Int?
   capo       Int?   @default(0)
 
-  currentRev String? // pointer to latest TabRevision
+  currentRev Int? // pointer to latest TabRevision
   revisions  TabRevision[]
 
   createdAt DateTime @default(now())
@@ -79,7 +79,7 @@ model TabRevision {
   number    Int
   message   String?
   score     Json // canonical JSON representation
-  createdBy String
+  createdBy Int
   createdAt DateTime @default(now())
 
   @@unique([tabId, number])

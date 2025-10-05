@@ -9,16 +9,24 @@ import { TabsService } from './tabs/tabs.service';
 import { TabsModule } from './tabs/tabs.module';
 import { SongsController } from './songs/songs.controller';
 import { PrismaService } from 'prisma/prisma.service';
+import { TabRevisionsService } from './tabs/revisions/tab-revisions.service';
+import { TabRevisionsController } from './tabs/revisions/tab-revisions.controller';
 
 @Module({
   imports: [AuthModule, SongsModule, TabsModule, SongsModule],
-  controllers: [AppController, RedocController, SongsController],
+  controllers: [
+    AppController,
+    RedocController,
+    SongsController,
+    TabRevisionsController,
+  ],
   providers: [
     AppService,
     SongsService,
     TabsService,
     SongsService,
     PrismaService,
+    TabRevisionsService,
   ],
 })
 export class AppModule {}
