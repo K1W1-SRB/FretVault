@@ -37,7 +37,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ChevronDown, Code } from "lucide-react";
+import { ChevronDown, LayoutDashboard } from "lucide-react";
 import { Avatar } from "./ui/avatar";
 import { AvatarFallback } from "@radix-ui/react-avatar";
 import { useEffect, useState } from "react";
@@ -47,8 +47,13 @@ import { useRouter } from "next/navigation";
 // ------------------ Navigation structure ------------------
 const navMain = [
   {
+    title: "Dashboard",
+    href: "/dashboard",
+    icon: LayoutDashboard,
+  },
+  {
     title: "Zones",
-    href: "zones",
+    href: "/dashboard/zones",
     icon: Guitar,
     items: [
       { title: "Practice Zone", href: "/zones/practice" },
@@ -57,22 +62,22 @@ const navMain = [
   },
   {
     title: "Chords charts",
-    href: "/app/chords",
+    href: "/dashboard/chords",
     icon: ListMusic,
   },
   {
     title: "Practise Session",
-    href: "/practise",
+    href: "/dashboard/practise",
     icon: Timer,
   },
   {
     title: "Song Library",
-    href: "/app/library",
+    href: "/dashboard/song-library",
     icon: Library,
   },
   {
     title: "Documentation",
-    href: "/docs",
+    href: "/dashboard/docs",
     icon: FileText,
     items: [
       { title: "API Reference", href: "/docs/api" },
@@ -81,7 +86,7 @@ const navMain = [
   },
   {
     title: "Settings",
-    href: "/settings",
+    href: "/dashboard/settings",
     icon: Settings,
   },
 ];
