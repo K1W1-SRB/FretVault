@@ -1,10 +1,17 @@
 "use client";
+import GuitarStringsSection from "@/components/guitar-string-section";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { ArrowRight, Music, BarChart3, Users } from "lucide-react";
+import { ArrowRight, Music, BarChart3, Users, GuitarIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function LandingPage() {
+  const router = useRouter();
+
+  const handleAuth = () => {
+    router.push("/auth");
+  };
   return (
     <div className="min-h-screen bg-[#0B0B0B] text-white flex flex-col">
       {/* Header */}
@@ -21,7 +28,10 @@ export default function LandingPage() {
             Community
           </a>
         </nav>
-        <Button className="bg-white text-black font-semibold rounded-xl hover:bg-neutral-200 transition-colors">
+        <Button
+          onClick={handleAuth}
+          className="bg-white text-black font-semibold rounded-xl hover:bg-neutral-200 transition-colors"
+        >
           Sign In
         </Button>
       </header>
@@ -71,6 +81,8 @@ export default function LandingPage() {
           />
         </motion.div>
       </section>
+
+      <GuitarStringsSection />
 
       {/* Features Section */}
       <section id="features" className="px-12 py-24 bg-[#111111]">
