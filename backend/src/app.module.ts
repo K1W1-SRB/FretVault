@@ -11,9 +11,20 @@ import { SongsController } from './songs/songs.controller';
 import { PrismaService } from 'prisma/prisma.service';
 import { TabRevisionsService } from './tabs/revisions/tab-revisions.service';
 import { TabRevisionsController } from './tabs/revisions/tab-revisions.controller';
+import { PractisePlansService } from './practise-plans/practice-plans.service';
+import { PractisePlansModule } from './practise-plans/practice-plans.module';
+import { PractiseItemsService } from './practise-items/practise-items.service';
+import { PractiseItemsModule } from './practise-items/practise-items.module';
 
 @Module({
-  imports: [AuthModule, SongsModule, TabsModule, SongsModule],
+  imports: [
+    AuthModule,
+    SongsModule,
+    TabsModule,
+    SongsModule,
+    PractisePlansModule,
+    PractiseItemsModule,
+  ],
   controllers: [
     AppController,
     RedocController,
@@ -27,6 +38,8 @@ import { TabRevisionsController } from './tabs/revisions/tab-revisions.controlle
     SongsService,
     PrismaService,
     TabRevisionsService,
+    PractisePlansService,
+    PractiseItemsService,
   ],
 })
 export class AppModule {}

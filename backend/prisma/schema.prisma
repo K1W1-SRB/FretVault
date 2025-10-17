@@ -18,12 +18,13 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  email       String  @unique
-  password    String
-  name        String
-  accountType String
-  avatar      String?
-  Song        Song[]
+  email        String         @unique
+  password     String
+  name         String
+  accountType  String
+  avatar       String?
+  Song         Song[]
+  PracticePlan PracticePlan[]
 }
 
 model Song {
@@ -83,4 +84,37 @@ model TabRevision {
   createdAt DateTime @default(now())
 
   @@unique([tabId, number])
+}
+
+model PracticePlan {
+  id          Int            @id @default(autoincrement())
+  name        String
+  description String?
+  ownerId     Int
+  owner       User           @relation(fields: [ownerId], references: [id])
+  items       PracticeItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum PracticeCategory {
+  WARMUP
+  CHORDS
+  SCALES
+  SONGS
+  THEORY
+  EAR_TRAINING
+  COOL_DOWN
+}
+
+model PracticeItem {
+  id          Int              @id @default(autoincrement())
+  planId      Int
+  plan        PracticePlan     @relation(fields: [planId], references: [id])
+  title       String
+  category    PracticeCategory
+  duration    Int
+  description String?
+  order       Int
 }
