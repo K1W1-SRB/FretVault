@@ -11,4 +11,4 @@ import { JwtService } from '@nestjs/jwt';
   providers: [PracticePlansService, PrismaService, AuthService, JwtService],
   exports: [PracticePlansService],
 })
-export class PractisePlansModule {}
+export class PracticePlansModule {}

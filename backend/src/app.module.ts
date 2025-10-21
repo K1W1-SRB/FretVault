@@ -11,10 +11,10 @@ import { SongsController } from './songs/songs.controller';
 import { PrismaService } from 'prisma/prisma.service';
 import { TabRevisionsService } from './tabs/revisions/tab-revisions.service';
 import { TabRevisionsController } from './tabs/revisions/tab-revisions.controller';
-import { PractisePlansService } from './practise-plans/practice-plans.service';
-import { PractisePlansModule } from './practise-plans/practice-plans.module';
-import { PractiseItemsService } from './practise-items/practise-items.service';
-import { PractiseItemsModule } from './practise-items/practise-items.module';
+import { PracticePlansModule } from './practise-plans/practice-plans.module';
+import { PracticeItemsModule } from './practise-items/practice-items.module';
+import { PracticePlansService } from './practise-plans/practice-plans.service';
+import { PracticeItemsService } from './practise-items/practice-items.service';
 
 @Module({
   imports: [
@@ -22,8 +22,8 @@ import { PractiseItemsModule } from './practise-items/practise-items.module';
     SongsModule,
     TabsModule,
     SongsModule,
-    PractisePlansModule,
-    PractiseItemsModule,
+    PracticePlansModule,
+    PracticeItemsModule,
   ],
   controllers: [
     AppController,
@@ -38,8 +38,8 @@ import { PractiseItemsModule } from './practise-items/practise-items.module';
     SongsService,
     PrismaService,
     TabRevisionsService,
-    PractisePlansService,
-    PractiseItemsService,
+    PracticePlansService,
+    PracticeItemsService,
   ],
 })
 export class AppModule {}

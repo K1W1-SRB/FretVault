@@ -1,4 +1,94 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { CreatePracticePlanDto } from './dto/create-practice-plan.dto';
+import { PracticePlan } from '@prisma/client';
+export type PracticePlanType = PracticePlan;
+import { PrismaService } from 'prisma/prisma.service';
+import { UpdatePracticePlanDto } from './dto/update-practice-plan.dto';
 
 @Injectable()
-export class PracticePlansService {}
+export class PracticePlansService {
+  constructor(private prisma: PrismaService) {}
+
+  async create(
+    dto: CreatePracticePlanDto,
+    ownerId: number,
+  ): Promise<PracticePlanType> {
+    const plan = await this.prisma.practicePlan.create({
+      data: {
+        name: dto.name,
+        description: dto.description,
+        ownerId,
+      },
+    });
+    return plan;
+  }
+
+  async findAll(ownerId: number): Promise<PracticePlanType[]> {
+    const plans = await this.prisma.practicePlan.findMany({
+      where: { ownerId: ownerId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return plans;
+  }
+
+  async findOne(id: number, ownerId: number): Promise<PracticePlanType> {
+    const practicePlan = await this.prisma.practicePlan.findUnique({
+      where: { id },
+    });
+
+    if (practicePlan?.ownerId !== ownerId) {
+      throw new ForbiddenException('You cannot Access this resource');
+    }
+
+    if (!practicePlan)
+      throw new NotFoundException(`practice with id ${id} not found`);
+
+    return practicePlan;
+  }
+
+  async update(
+    id: number,
+    ownerId: number,
+    dto: UpdatePracticePlanDto,
+  ): Promise<PracticePlanType> {
+    const practicePlan = await this.prisma.practicePlan.findUnique({
+      where: { id },
+    });
+
+    if (practicePlan?.ownerId !== ownerId) {
+      throw new ForbiddenException('You cannot Access this resource');
+    }
+
+    if (!practicePlan)
+      throw new NotFoundException(`practice with id ${id} not found`);
+
+    const UpdatedPracticePlan = await this.prisma.practicePlan.update({
+      where: { id },
+      data: dto,
+    });
+
+    return UpdatedPracticePlan;
+  }
+
+  async delete(id: number, ownerId: number): Promise<PracticePlanType> {
+    const practicePlan = await this.prisma.practicePlan.findUnique({
+      where: { id },
+    });
+
+    if (practicePlan?.ownerId !== ownerId) {
+      throw new ForbiddenException('You cannot Access this resource');
+    }
+
+    if (!practicePlan)
+      throw new NotFoundException(`practice with id ${id} not found`);
+
+    return this.prisma.practicePlan.delete({
+      where: { id },
+    });
+  }
+}

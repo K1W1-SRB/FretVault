@@ -16,9 +16,6 @@ export class CreatePracticePlanDto {
   @IsString()
   description?: string;
 
-  @IsInt()
-  ownerId: number; // you can omit this if you inject from auth context
-
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreatePracticeItemDto)
