@@ -2,25 +2,14 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import debounce from "lodash.debounce"; // 👈 we'll use lodash.debounce
-import {
-  ColumnDef,
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
+import { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { DataTable } from "@/components/data-table";
 
 type Song = {
   id: number;
@@ -166,13 +155,6 @@ export default function SongLibrary() {
     },
   ];
 
-  // Build table from filtered data
-  const table = useReactTable({
-    data: filteredSongs,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-  });
-
   const router = useRouter();
 
   const handleCreate = () => {
@@ -206,55 +188,7 @@ export default function SongLibrary() {
       </div>
 
       <div className="rounded-md border bg-background/50">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {flexRender(
-                      header.column.columnDef.header,
-                      header.getContext()
-                    )}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={columns.length}>
-                  <div className="flex justify-center items-center py-6">
-                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                    Loading songs...
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : filteredSongs.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length}>
-                  <div className="text-center text-muted-foreground py-6">
-                    No songs found.
-                  </div>
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+        <DataTable columns={columns} data={filteredSongs} loading={loading} />
       </div>
     </section>
   );

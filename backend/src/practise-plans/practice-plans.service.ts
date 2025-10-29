@@ -69,7 +69,23 @@ export class PracticePlansService {
 
     const UpdatedPracticePlan = await this.prisma.practicePlan.update({
       where: { id },
-      data: dto,
+      data: {
+        name: dto.name,
+        description: dto.description,
+        ...(dto.items && {
+          items: {
+            deleteMany: {}, // remove old ones
+            create: dto.items.map((item) => ({
+              title: item.title,
+              category: item.category,
+              description: item.description,
+              duration: item.duration,
+              order: item.order,
+            })),
+          },
+        }),
+      },
+      include: { items: true },
     });
 
     return UpdatedPracticePlan;

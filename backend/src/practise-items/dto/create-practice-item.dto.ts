@@ -24,6 +24,10 @@ export class CreatePracticeItemDto {
   description?: string;
 
   @IsInt()
+  @IsPositive()
+  planId: number;
+
+  @IsInt()
   @Min(0)
   order: number;
 }
