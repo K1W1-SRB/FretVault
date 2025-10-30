@@ -25,7 +25,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import SortableRow from "@/components/sortable-table";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 type PracticeItem = {
   id: number;
@@ -50,6 +50,7 @@ export default function PracticePlanView() {
   const [plan, setPlan] = useState<PracticePlan | null>(null);
   const [items, setItems] = useState<PracticeItem[]>([]);
   const sensors = useSensors(useSensor(PointerSensor));
+  const router = useRouter();
 
   // 🔹 Load plan + items
   useEffect(() => {
@@ -211,7 +212,7 @@ export default function PracticePlanView() {
   return (
     <section className="min-h-[70vh] rounded-xl border bg-background/60 p-6">
       <div className="mb-6 flex items-center justify-between">
-        <div className="flex justify-end">
+        <div className="flex flex-col">
           {editMode ? (
             <>
               <Input
@@ -228,6 +229,13 @@ export default function PracticePlanView() {
             </>
           ) : (
             <>
+              <Button
+                className="max-w-20"
+                onClick={() => router.push(`/dashboard/practice/${id}/play`)}
+                variant={"default"}
+              >
+                Play
+              </Button>
               <h1 className="text-2xl font-bold tracking-tight">{plan.name}</h1>
               <p className="text-sm text-muted-foreground">
                 {plan.description}
