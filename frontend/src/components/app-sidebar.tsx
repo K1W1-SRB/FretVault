@@ -22,74 +22,19 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import {
-  Guitar,
-  ListMusic,
-  Timer,
-  Library,
-  FileText,
-  Settings,
-  LogOut,
-} from "lucide-react";
+import { LogOut, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ChevronDown, LayoutDashboard } from "lucide-react";
 import { Avatar } from "./ui/avatar";
 import { AvatarFallback } from "@radix-ui/react-avatar";
 import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import { useRouter } from "next/navigation";
-
-// ------------------ Navigation structure ------------------
-const navMain = [
-  {
-    title: "Dashboard",
-    href: "/dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    title: "Zones",
-    href: "/dashboard/zones",
-    icon: Guitar,
-    items: [
-      { title: "Practice Zone", href: "/zones/practice" },
-      { title: "Performance Zone", href: "/zones/performance" },
-    ],
-  },
-  {
-    title: "Chords charts",
-    href: "/dashboard/chords",
-    icon: ListMusic,
-  },
-  {
-    title: "Practise Session",
-    href: "/dashboard/practise",
-    icon: Timer,
-  },
-  {
-    title: "Song Library",
-    href: "/dashboard/song-library",
-    icon: Library,
-  },
-  {
-    title: "Documentation",
-    href: "/dashboard/docs",
-    icon: FileText,
-    items: [
-      { title: "API Reference", href: "/docs/api" },
-      { title: "Guides", href: "/docs/guides" },
-    ],
-  },
-  {
-    title: "Settings",
-    href: "/dashboard/settings",
-    icon: Settings,
-  },
-];
+import { navMain } from "@/lib/utils";
 
 // ------------------ Helpers ------------------
 function getInitials(name: string) {
