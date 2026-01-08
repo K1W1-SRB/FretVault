@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -173,7 +173,6 @@ function gridToAscii(grid: Grid, strings: string[], columns: number) {
 }
 
 export default function TabViewPage() {
-  const router = useRouter();
   const params = useParams<{ id: string }>();
   const tabId = Number(params.id);
 
@@ -278,34 +277,45 @@ export default function TabViewPage() {
     [grid, strings, columns]
   );
 
-  // Expanded fret cycle (0–17)
+  const FRET_CYCLE = [
+    null,
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+  ] as const;
+
   function toggleCell(r: number, c: number) {
     setGrid((g) => {
       const clone = g.map((row) => [...row]);
-      const cur = clone[r][c];
-      const cycle = [
-        null,
-        0,
-        1,
-        2,
-        3,
-        4,
-        5,
-        6,
-        7,
-        8,
-        9,
-        10,
-        11,
-        12,
-        13,
-        14,
-        15,
-        16,
-        17,
-      ];
-      const idx = cycle.indexOf(cur as any);
-      const next = cycle[(idx + 1) % cycle.length];
+      const cur = clone[r]?.[c];
+
+      if (cur === undefined) return g; // out-of-bounds guard
+
+      // null -> 0, 0 -> 1, ..., 17 -> 18; anything else -> treat as null
+      const curIndex =
+        typeof cur === "number" &&
+        Number.isInteger(cur) &&
+        cur >= 0 &&
+        cur <= 17
+          ? cur + 1
+          : 0;
+
+      const next = FRET_CYCLE[(curIndex + 1) % FRET_CYCLE.length];
       clone[r][c] = next;
       return clone;
     });

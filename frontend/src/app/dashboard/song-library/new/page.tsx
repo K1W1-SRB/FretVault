@@ -32,24 +32,25 @@ const createSongSchema = z.object({
   tempo: z
     .union([z.string(), z.number()])
     .optional()
-    .transform((val) => (val ? Number(val) : null)),
+    .transform((val) => (val === undefined || val === "" ? null : Number(val))),
   timeSigTop: z
     .union([z.string(), z.number()])
     .default("4")
-    .transform((val) => Number(val)),
+    .transform((val) => (val === undefined || val === "" ? null : Number(val))),
   timeSigBot: z
     .union([z.string(), z.number()])
     .default("4")
-    .transform((val) => Number(val)),
+    .transform((val) => (val === undefined || val === "" ? null : Number(val))),
   visibility: z.enum(["PRIVATE", "PUBLIC", "UNLISTED"]),
 });
 
-type CreateSongForm = z.infer<typeof createSongSchema>;
+type CreateSongFormInput = z.input<typeof createSongSchema>;
+type CreateSongForm = z.output<typeof createSongSchema>; // transformed output
 
 export default function NewSongPage() {
   const router = useRouter();
 
-  const form = useForm<CreateSongForm>({
+  const form = useForm<CreateSongFormInput, unknown, CreateSongForm>({
     resolver: zodResolver(createSongSchema),
     defaultValues: {
       title: "",

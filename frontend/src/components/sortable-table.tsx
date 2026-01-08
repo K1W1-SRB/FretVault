@@ -21,7 +21,7 @@ type PracticeItem = {
   category: string;
 };
 
-const categories = ["CHORDS", "SCALES", "RHYTHM", "EAR_TRAINING", "GENERAL"];
+const categories = ["CHORDS", "SCALES", "RHYTHM", "EAR_TRAINING"];
 
 export default function SortableRow({
   item,

@@ -3,7 +3,7 @@ import GuitarStringsSection from "@/components/guitar-string-section";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { ArrowRight, Music, BarChart3, Users, GuitarIcon } from "lucide-react";
+import { ArrowRight, Music, BarChart3, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function LandingPage() {

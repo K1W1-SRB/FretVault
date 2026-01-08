@@ -7,6 +7,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  DragEndEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -112,7 +113,6 @@ export default function PracticePlanView() {
     }, 50);
   };
 
-  // 🔹 Save all changes (plan + items)
   const handleSave = async () => {
     if (!plan) return;
 
@@ -182,7 +182,7 @@ export default function PracticePlanView() {
     }
   };
 
-  const handleDragEnd = (event: any) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 

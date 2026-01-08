@@ -18,7 +18,7 @@ import {
 import { Loader2 } from "lucide-react";
 
 interface DataTableProps<TData> {
-  columns: ColumnDef<TData, any>[];
+  columns: ColumnDef<TData, unknown>[];
   data: TData[];
   loading?: boolean;
   emptyMessage?: string;

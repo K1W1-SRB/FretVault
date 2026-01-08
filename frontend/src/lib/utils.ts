@@ -8,6 +8,7 @@ import {
   FileText,
   Settings,
   LayoutDashboard,
+  MicVocal,
 } from "lucide-react";
 
 export function cn(...inputs: ClassValue[]) {
@@ -28,6 +29,11 @@ export const navMain = [
       { title: "Practice Zone", href: "/zones/practice" },
       { title: "Performance Zone", href: "/zones/performance" },
     ],
+  },
+  {
+    title: "Guitar Tuner",
+    href: "/dashboard/tuner",
+    icon: MicVocal,
   },
   {
     title: "Chords charts",

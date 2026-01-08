@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { LampDesk, Loader2, Play, Pause, CheckCircle } from "lucide-react";
 import { useParams } from "next/navigation";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 
 type Exercise = {
   id: number;
@@ -22,7 +22,7 @@ export default function PracticePage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Fetch practice items
   useEffect(() => {
@@ -59,14 +59,26 @@ export default function PracticePage() {
     };
   }, [id]);
 
-  // Timer logic
+  const handlePlayPause = () => {
+    setIsRunning((prev) => !prev);
+  };
+
+  const handleNext = useCallback(() => {
+    setIsRunning(false);
+    setCurrentIndex((prev) => {
+      const nextIndex = Math.min(prev + 1, practiceItems.length - 1);
+      setTimeLeft(practiceItems[nextIndex]?.duration * 60 || 0);
+      return nextIndex;
+    });
+  }, [practiceItems]);
+
   useEffect(() => {
     if (!isRunning) return;
 
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          clearInterval(timerRef.current!);
+          if (timerRef.current) clearInterval(timerRef.current);
           handleNext();
           return 0;
         }
@@ -75,22 +87,12 @@ export default function PracticePage() {
     }, 1000);
 
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
     };
-  }, [isRunning]);
-
-  const handlePlayPause = () => {
-    setIsRunning((prev) => !prev);
-  };
-
-  const handleNext = () => {
-    setIsRunning(false);
-    setCurrentIndex((prev) => {
-      const nextIndex = Math.min(prev + 1, practiceItems.length - 1);
-      setTimeLeft(practiceItems[nextIndex]?.duration * 60 || 0);
-      return nextIndex;
-    });
-  };
+  }, [isRunning, handleNext]);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60)

@@ -2,13 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { MoreVertical, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DataTable } from "@/components/data-table";
 import { ColumnDef } from "@tanstack/react-table";
-import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
 import debounce from "lodash.debounce";
 
@@ -40,7 +39,7 @@ export default function PracticeDashboard() {
         setPlans(data);
         setFiltered(data);
       } catch (err) {
-        console.error("error fetching plans:");
+        console.error("error fetching plans:", err);
         setPlans([]);
         setFiltered([]);
       } finally {
