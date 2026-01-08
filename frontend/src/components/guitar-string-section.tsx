@@ -1,15 +1,26 @@
 "use client";
 
-import { motion, useScroll, useTransform } from "framer-motion";
-import { useRef, useState, useEffect } from "react";
+import { useScroll } from "framer-motion";
+import { useRef, useState } from "react";
+import GuitarString from "./ui/guitar-string";
 
 let audioCtx: AudioContext | null = null;
-function getAudioContext() {
-  if (!audioCtx || audioCtx.state === "closed") {
-    audioCtx = new (window.AudioContext ||
-      (window as any).webkitAudioContext)();
+
+function getAudioContext(): AudioContext {
+  const AudioContextCtor = window.AudioContext;
+
+  if (!AudioContextCtor) {
+    throw new Error("Web Audio API is not supported in this browser.");
   }
-  if (audioCtx.state === "suspended") audioCtx.resume();
+
+  if (!audioCtx || audioCtx.state === "closed") {
+    audioCtx = new AudioContextCtor();
+  }
+
+  if (audioCtx.state === "suspended") {
+    void audioCtx.resume(); // don't ignore promise
+  }
+
   return audioCtx;
 }
 
@@ -84,52 +95,16 @@ export default function GuitarStringsSection() {
       </div>
 
       <div className="relative flex flex-col justify-center h-full w-full space-y-6 md:space-y-8">
-        {[...Array(6)].map((_, i) => {
-          const y = useTransform(
-            scrollYProgress,
-            [0, 1],
-            [0, i % 2 === 0 ? 4 : -4]
-          );
-          const isPlucked = activeString === i;
-          const baseAmp = isPlucked ? 12 : 0;
-          const phaseOffset = i * 1.5; // gives each string unique movement
-
-          return (
-            <motion.svg
-              key={i}
-              style={{ y }}
-              onMouseEnter={() => handlePluck(i)}
-              className="w-full h-[6px] overflow-visible cursor-pointer"
-              viewBox="0 0 800 10"
-              preserveAspectRatio="none"
-            >
-              <motion.path
-                fill="none"
-                stroke="#00BFA6"
-                strokeWidth="3"
-                strokeLinecap="round"
-                animate={{
-                  d: isPlucked
-                    ? [
-                        createWavePath(baseAmp, phaseOffset),
-                        createWavePath(baseAmp * 0.8, phaseOffset + 1),
-                        createWavePath(baseAmp * 0.5, phaseOffset + 2),
-                        createWavePath(baseAmp * 0.3, phaseOffset + 3),
-                        createWavePath(0, phaseOffset + 4),
-                      ]
-                    : [createWavePath(0, phaseOffset)],
-                  filter: isPlucked
-                    ? "drop-shadow(0 0 12px #00BFA6)"
-                    : "drop-shadow(0 0 6px #00BFA6)",
-                }}
-                transition={{
-                  duration: 1.2,
-                  ease: "easeOut",
-                }}
-              />
-            </motion.svg>
-          );
-        })}
+        {Array.from({ length: 6 }).map((_, i) => (
+          <GuitarString
+            key={i}
+            index={i}
+            scrollYProgress={scrollYProgress}
+            isPlucked={activeString === i}
+            onPluck={handlePluck}
+            createWavePath={createWavePath}
+          />
+        ))}
       </div>
     </section>
   );

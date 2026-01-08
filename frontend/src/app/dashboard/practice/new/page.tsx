@@ -10,7 +10,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Description } from "@radix-ui/react-dialog";
 import { Loader2, Newspaper } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React from "react";
@@ -25,7 +24,7 @@ const createPlanSchema = z.object({
 
 type CreatePlanForm = z.infer<typeof createPlanSchema>;
 
-export default function page() {
+export default function NewPractice() {
   const router = useRouter();
 
   const form = useForm<CreatePlanForm>({
@@ -57,8 +56,8 @@ export default function page() {
     }
   }
 
-  const { handleSubmit, register, setValue, formState } = form;
-  const { errors, isSubmitting } = formState;
+  const { handleSubmit, register, formState } = form;
+  const { isSubmitting } = formState;
   return (
     <section className="relative min-h-[80vh] flex flex-col items-center justify-start py-16 px-6">
       <div className="max-w-3xl text-center mb-10">

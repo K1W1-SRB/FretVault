@@ -49,19 +49,20 @@ const createTabSchema = z.object({
     .transform((val) => (val ? Number(val) : 0)),
 });
 
-type CreateTabForm = z.infer<typeof createTabSchema>;
+type CreateTabFormInput = z.input<typeof createTabSchema>;
+type CreateTabForm = z.output<typeof createTabSchema>;
 
 export default function NewTabPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const songId = Number(params.id);
 
-  const form = useForm<CreateTabForm>({
+  const form = useForm<CreateTabFormInput, unknown, CreateTabForm>({
     resolver: zodResolver(createTabSchema),
     defaultValues: {
       title: "",
       tuning: "E4,B3,G3,D3,A2,E2",
-      tempo: null,
+      tempo: "",
       timeSigTop: 4,
       timeSigBot: 4,
       capo: 0,

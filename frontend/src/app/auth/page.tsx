@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Github, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -44,6 +44,20 @@ type RegisterValues = z.infer<typeof registerSchema>;
 export default function AuthPage() {
   const [tab, setTab] = useState<"register" | "login">("register");
 
+  // Helpers
+  function getErrorMessage(err: unknown): string {
+    if (err instanceof Error) return err.message;
+
+    // Some libs throw plain objects like { message: "..." }
+    if (typeof err === "object" && err !== null && "message" in err) {
+      const maybeMsg = (err as { message?: unknown }).message;
+      if (typeof maybeMsg === "string") return maybeMsg;
+    }
+
+    if (typeof err === "string") return err;
+    return "Something went wrong";
+  }
+
   // Login form
   const {
     register: loginReg,
@@ -79,8 +93,8 @@ export default function AuthPage() {
       // Redirect if you like:
       window.location.href = "/dashboard";
       resetLogin();
-    } catch (e: any) {
-      toast.error(e.message || "Something went wrong");
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e));
     }
   }
 
@@ -100,8 +114,8 @@ export default function AuthPage() {
       toast.success("Registered successfully. You can sign in now.");
       resetRegister();
       setTab("login");
-    } catch (e: any) {
-      toast.error(e.message || "Something went wrong");
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e));
     }
   }
 
