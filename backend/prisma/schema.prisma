@@ -1,8 +1,4 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// prisma/schema.prisma
 
 generator client {
   provider = "prisma-client-js"
@@ -13,18 +9,60 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum AccountType {
+  SOLO
+  BAND
+}
+
+enum Visibility {
+  PRIVATE
+  UNLISTED
+  PUBLIC
+}
+
+enum PracticeCategory {
+  WARMUP
+  CHORDS
+  SCALES
+  SONGS
+  THEORY
+  EAR_TRAINING
+  COOL_DOWN
+}
+
+enum WorkspaceType {
+  PERSONAL
+  BAND
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
 model User {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  email        String         @unique
-  password     String
-  name         String
-  accountType  String
-  avatar       String?
-  Song         Song[]
-  PracticePlan PracticePlan[]
+  email       String      @unique
+  password    String
+  name        String
+  accountType AccountType @default(SOLO)
+  avatar      String?
+
+  // Collaboration
+  memberships WorkspaceMember[]
+
+  // Legacy ownership (you said you’re keeping this for now)
+  songs         Song[]
+  practicePlans PracticePlan[]
+
+  // ✅ Back-relations for Note attribution (STOP Prisma from auto-adding junk)
+  notesCreated Note[] @relation("NoteCreatedBy")
+  notesUpdated Note[] @relation("NoteUpdatedBy")
 }
 
 model Song {
@@ -46,12 +84,13 @@ model Song {
 
   tabs Tab[]
   tags String[] @default([])
-}
 
-enum Visibility {
-  PRIVATE
-  UNLISTED
-  PUBLIC
+  // Optional: move songs into workspaces later; this lets you start now without breaking legacy
+  workspaceId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+
+  @@index([ownerId])
+  @@index([workspaceId])
 }
 
 model Tab {
@@ -66,11 +105,13 @@ model Tab {
   timeSigBot Int?
   capo       Int?   @default(0)
 
-  currentRev Int? // pointer to latest TabRevision
+  currentRev Int?
   revisions  TabRevision[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([songId])
 }
 
 model TabRevision {
@@ -79,11 +120,12 @@ model TabRevision {
   tab       Tab      @relation(fields: [tabId], references: [id])
   number    Int
   message   String?
-  score     Json // canonical JSON representation
+  score     Json
   createdBy Int
   createdAt DateTime @default(now())
 
   @@unique([tabId, number])
+  @@index([tabId])
 }
 
 model PracticePlan {
@@ -96,16 +138,13 @@ model PracticePlan {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-}
 
-enum PracticeCategory {
-  WARMUP
-  CHORDS
-  SCALES
-  SONGS
-  THEORY
-  EAR_TRAINING
-  COOL_DOWN
+  // Optional: move plans into workspaces later; this lets you start now without breaking legacy
+  workspaceId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+
+  @@index([ownerId])
+  @@index([workspaceId])
 }
 
 model PracticeItem {
@@ -117,4 +156,147 @@ model PracticeItem {
   duration    Int
   description String?
   order       Int
+
+  @@index([planId])
+}
+
+// --------------------
+// Workspaces + Members
+// --------------------
+
+model Workspace {
+  id        String        @id @default(cuid())
+  type      WorkspaceType
+  name      String
+  slug      String        @unique
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  members WorkspaceMember[]
+
+  // Workspace-owned resources (notes/tags are workspace-first)
+  notes Note[]
+  tags  Tag[]
+
+  // Optional legacy bridge (since Song/PracticePlan have workspaceId?)
+  songs Song[]
+  plans PracticePlan[]
+
+  @@index([type])
+}
+
+model WorkspaceMember {
+  id          String        @id @default(cuid())
+  workspaceId String
+  userId      Int
+  role        WorkspaceRole @default(MEMBER)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  joinedAt DateTime @default(now())
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+  @@index([workspaceId, role])
+}
+
+// --------------------
+// Notes (workspace-owned)
+// --------------------
+
+model Note {
+  id String @id @default(cuid())
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  // Attribution (optional)
+  createdById Int?
+  updatedById Int?
+  createdBy   User? @relation("NoteCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy   User? @relation("NoteUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  title     String
+  slug      String
+  contentMd String @db.Text
+
+  visibility  Visibility @default(PRIVATE)
+  frontmatter Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tags     NoteTag[]
+  outgoing NoteLink[]  @relation("OutgoingLinks")
+  incoming NoteLink[]  @relation("IncomingLinks")
+  blocks   NoteBlock[]
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId, updatedAt])
+  @@index([workspaceId, visibility])
+}
+
+model Tag {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  name      String
+  createdAt DateTime @default(now())
+
+  notes NoteTag[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId, name])
+}
+
+model NoteTag {
+  noteId String
+  tagId  String
+
+  note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([noteId, tagId])
+  @@index([tagId])
+}
+
+model NoteLink {
+  id String @id @default(cuid())
+
+  fromNoteId String
+  toNoteId   String?
+
+  toSlug String
+  alias  String?
+
+  raw     String?
+  context String?
+
+  from Note  @relation("OutgoingLinks", fields: [fromNoteId], references: [id], onDelete: Cascade)
+  to   Note? @relation("IncomingLinks", fields: [toNoteId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@unique([fromNoteId, toSlug])
+  @@index([fromNoteId])
+  @@index([toNoteId])
+  @@index([toSlug])
+}
+
+model NoteBlock {
+  id String @id @default(cuid())
+
+  noteId String
+  note   Note   @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  type  String
+  data  Json
+  order Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([noteId, type])
 }

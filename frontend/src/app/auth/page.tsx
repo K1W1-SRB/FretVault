@@ -36,7 +36,7 @@ const registerSchema = z.object({
   email: z.string().email("Enter a valid email"),
   password: z.string().min(8, "Min 8 characters"),
   accountType: z
-    .enum(["personal", "group"])
+    .enum(["SOLO", "BAND"])
     .refine((val) => val !== undefined, { message: "Select an account type" }),
 });
 type RegisterValues = z.infer<typeof registerSchema>;
@@ -293,8 +293,8 @@ export default function AuthPage() {
                               <SelectValue placeholder="Account" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="personal">Personal</SelectItem>
-                              <SelectItem value="group">Group</SelectItem>
+                              <SelectItem value="SOLO">Personal</SelectItem>
+                              <SelectItem value="BAND">Band</SelectItem>
                             </SelectContent>
                           </Select>
                         )}

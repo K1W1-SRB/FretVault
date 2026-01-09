@@ -15,6 +15,10 @@ import { PracticePlansModule } from './practise-plans/practice-plans.module';
 import { PracticeItemsModule } from './practise-items/practice-items.module';
 import { PracticePlansService } from './practise-plans/practice-plans.service';
 import { PracticeItemsService } from './practise-items/practice-items.service';
+import { WorkspacesModule } from './workspace/workspace.module';
+import { WorkspacesService } from './workspace/workspace.service';
+import { NotesService } from './notes/notes.service';
+import { NotesModule } from './notes/notes.module';
 
 @Module({
   imports: [
@@ -24,6 +28,8 @@ import { PracticeItemsService } from './practise-items/practice-items.service';
     SongsModule,
     PracticePlansModule,
     PracticeItemsModule,
+    WorkspacesModule,
+    NotesModule,
   ],
   controllers: [
     AppController,
@@ -40,6 +46,8 @@ import { PracticeItemsService } from './practise-items/practice-items.service';
     TabRevisionsService,
     PracticePlansService,
     PracticeItemsService,
+    WorkspacesService,
+    NotesService,
   ],
 })
 export class AppModule {}
