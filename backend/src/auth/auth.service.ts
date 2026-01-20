@@ -78,7 +78,6 @@ export class AuthService {
       },
     });
 
-    // ✅ Critical: every user must have a personal workspace
     await this.workspacesService.ensurePersonalWorkspace(user.id);
 
     return this.toAuthUser(user);

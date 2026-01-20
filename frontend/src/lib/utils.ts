@@ -9,6 +9,7 @@ import {
   Settings,
   LayoutDashboard,
   MicVocal,
+  NotebookPen,
 } from "lucide-react";
 
 export function cn(...inputs: ClassValue[]) {
@@ -22,13 +23,14 @@ export const navMain = [
     icon: LayoutDashboard,
   },
   {
-    title: "Zones",
-    href: "/dashboard/zones",
-    icon: Guitar,
-    items: [
-      { title: "Practice Zone", href: "/zones/practice" },
-      { title: "Performance Zone", href: "/zones/performance" },
-    ],
+    title: "Note Book",
+    href: "/dashboard/notebook",
+    icon: NotebookPen,
+  },
+  {
+    title: "Song Library",
+    href: "/dashboard/song-library",
+    icon: Library,
   },
   {
     title: "Guitar Tuner",
@@ -46,9 +48,13 @@ export const navMain = [
     icon: Timer,
   },
   {
-    title: "Song Library",
-    href: "/dashboard/song-library",
-    icon: Library,
+    title: "Zones",
+    href: "/dashboard/zones",
+    icon: Guitar,
+    items: [
+      { title: "Practice Zone", href: "/zones/practice" },
+      { title: "Performance Zone", href: "/zones/performance" },
+    ],
   },
   {
     title: "Documentation",
