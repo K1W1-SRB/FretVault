@@ -1,4 +1,4 @@
-import { NotesWorkspace } from "@/components/notes-workspace";
+import { NotesWorkspace } from "@/components/note-editor/notes-workspace";
 
 export default function NotesPage() {
   return (

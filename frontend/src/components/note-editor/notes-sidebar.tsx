@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import { notesApi } from "@/lib/notes-api";
 import { NoteListItem } from "@/app/dashboard/notebook/types";
 import { useSelectedWorkspace } from "@/hooks/selected-workspace-provider";
-import { WorkspaceSwitcher } from "./workspace-switcher";
+import { WorkspaceSwitcher } from "../workspace-switcher";
 
 type GroupMode = "tag" | "flat";
 
