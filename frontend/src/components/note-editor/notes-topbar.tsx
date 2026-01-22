@@ -23,11 +23,18 @@ function normalizeTags(raw: any): string[] {
     .map((t) => {
       if (typeof t === "string") return t.trim();
       if (t && typeof t === "object") {
+        const obj = t as Record<string, unknown>;
+        const nestedTag =
+          obj.tag && typeof obj.tag === "object"
+            ? (obj.tag as Record<string, unknown>)
+            : null;
+
         const v =
-          (typeof t.name === "string" && t.name) ||
-          (typeof t.label === "string" && t.label) ||
-          (typeof t.title === "string" && t.title) ||
-          (typeof t.value === "string" && t.value);
+          (typeof nestedTag?.name === "string" && (nestedTag.name as string)) ||
+          (typeof obj.name === "string" && (obj.name as string)) ||
+          (typeof obj.label === "string" && (obj.label as string)) ||
+          (typeof obj.title === "string" && (obj.title as string)) ||
+          (typeof obj.value === "string" && (obj.value as string));
         return typeof v === "string" ? v.trim() : "";
       }
       return "";

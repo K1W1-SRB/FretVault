@@ -30,7 +30,14 @@ function getTagLabel(tag: unknown): string | null {
 
   if (typeof tag === "object") {
     const t = tag as Record<string, unknown>;
+
+    const nestedTag =
+      t.tag && typeof t.tag === "object"
+        ? (t.tag as Record<string, unknown>)
+        : null;
+
     const candidate =
+      (typeof nestedTag?.name === "string" && (nestedTag.name as string)) ||
       (typeof t.name === "string" && t.name) ||
       (typeof t.label === "string" && t.label) ||
       (typeof t.title === "string" && t.title) ||
@@ -228,7 +235,56 @@ export function NotesSidebar({
           />
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2 p-2">
+          {!isCreating ? (
+            <button
+              type="button"
+              onClick={() => {
+                setNewTitle("");
+                createMutation.reset();
+                setIsCreating(true);
+              }}
+              className={cn(
+                "group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm",
+                "hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
+              )}
+              disabled={!selectedWorkspaceId}
+            >
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              <span className="truncate text-muted-foreground">New note…</span>
+            </button>
+          ) : (
+            <div
+              className={cn(
+                "group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm",
+                "hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
+              )}
+            >
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              <input
+                ref={titleInputRef}
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder="New note…"
+                className="w-full bg-transparent outline-none placeholder:text-muted-foreground"
+                disabled={createMutation.isPending}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    submitCreate();
+                  }
+                  if (e.key === "Escape") {
+                    e.preventDefault();
+                    cancelCreate();
+                  }
+                }}
+                onBlur={() => {
+                  if (!newTitle.trim()) cancelCreate();
+                }}
+              />
+            </div>
+          )}
+
           <Button
             type="button"
             size="sm"
@@ -367,56 +423,6 @@ export function NotesSidebar({
                         {items.length}
                       </span>
                     </button>
-                  )}
-                  {!isCreating ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setNewTitle("");
-                        createMutation.reset();
-                        setIsCreating(true);
-                      }}
-                      className={cn(
-                        "group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm",
-                        "hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
-                      )}
-                      disabled={!selectedWorkspaceId}
-                    >
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                      <span className="truncate text-muted-foreground">
-                        New note…
-                      </span>
-                    </button>
-                  ) : (
-                    <div
-                      className={cn(
-                        "group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm",
-                        "hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
-                      )}
-                    >
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                      <input
-                        ref={titleInputRef}
-                        value={newTitle}
-                        onChange={(e) => setNewTitle(e.target.value)}
-                        placeholder="New note…"
-                        className="w-full bg-transparent outline-none placeholder:text-muted-foreground"
-                        disabled={createMutation.isPending}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            submitCreate();
-                          }
-                          if (e.key === "Escape") {
-                            e.preventDefault();
-                            cancelCreate();
-                          }
-                        }}
-                        onBlur={() => {
-                          if (!newTitle.trim()) cancelCreate();
-                        }}
-                      />
-                    </div>
                   )}
 
                   {(!showFolderUI || !isCollapsed) && (
