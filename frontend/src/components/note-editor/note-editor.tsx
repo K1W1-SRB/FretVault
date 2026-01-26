@@ -35,6 +35,13 @@ import {
   serializeTabBlock,
   TabBlockData,
 } from "../note-editor/blocks/tab";
+import {
+  DEFAULT_BARS as DEFAULT_PROG_BARS,
+  DEFAULT_KEY as DEFAULT_PROG_KEY,
+  findProgressionBlockAtPos,
+  ProgressionBlockPreview,
+  serializeProgressionBlock,
+} from "../note-editor/blocks/progression";
 import { OptionSelect } from "./ui/option-select";
 
 type TabRow = (number | null)[];
@@ -148,6 +155,7 @@ export function NoteEditor({ activeSlug }: { activeSlug: string | null }) {
     pos: number;
     hasChordBlock: boolean;
     hasTabBlock: boolean;
+    hasProgBlock: boolean;
   }>(null);
 
   const [chordModal, setChordModal] = React.useState<null | {
@@ -171,6 +179,16 @@ export function NoteEditor({ activeSlug }: { activeSlug: string | null }) {
     capo: string;
     columns: number;
     grid: TabGrid;
+  }>(null);
+
+  const [progModal, setProgModal] = React.useState<null | {
+    mode: "insert" | "edit";
+    pos: number;
+    range?: { start: number; end: number };
+    key: string;
+    bars: string;
+    chords: string[];
+    chordInput: string;
   }>(null);
 
   React.useEffect(() => {
@@ -216,6 +234,7 @@ export function NoteEditor({ activeSlug }: { activeSlug: string | null }) {
     const pos = el.selectionStart ?? 0;
     const chord = findChordBlockAtPos(draft, pos);
     const tab = findTabBlockAtPos(draft, pos);
+    const prog = findProgressionBlockAtPos(draft, pos);
 
     setMenu({
       x: e.clientX,
@@ -223,6 +242,7 @@ export function NoteEditor({ activeSlug }: { activeSlug: string | null }) {
       pos,
       hasChordBlock: !!chord,
       hasTabBlock: !!tab,
+      hasProgBlock: !!prog,
     });
   }
 
@@ -256,6 +276,18 @@ export function NoteEditor({ activeSlug }: { activeSlug: string | null }) {
       capo: "",
       columns,
       grid: buildEmptyGrid(strings.length, columns),
+    });
+  }
+
+  function openInsertProgression(pos: number) {
+    closeContextMenu();
+    setProgModal({
+      mode: "insert",
+      pos,
+      key: DEFAULT_PROG_KEY,
+      bars: String(DEFAULT_PROG_BARS),
+      chords: ["I", "V", "vi", "IV"],
+      chordInput: "",
     });
   }
 
@@ -306,6 +338,106 @@ export function NoteEditor({ activeSlug }: { activeSlug: string | null }) {
       columns: parsed.columns,
       grid: parsed.grid,
     });
+  }
+
+  function openEditProgression(pos: number) {
+    closeContextMenu();
+    const prog = findProgressionBlockAtPos(draft, pos);
+    if (!prog) return;
+
+    setProgModal({
+      mode: "edit",
+      pos,
+      range: { start: prog.start, end: prog.end },
+      key: prog.data.key ?? DEFAULT_PROG_KEY,
+      bars:
+        typeof prog.data.bars === "number"
+          ? String(prog.data.bars)
+          : String(DEFAULT_PROG_BARS),
+      chords: prog.data.chords ?? [],
+      chordInput: "",
+    });
+  }
+
+  function withSelection(
+    handler: (args: {
+      start: number;
+      end: number;
+      value: string;
+    }) => { text: string; selectStart: number; selectEnd: number },
+  ) {
+    const el = taRef.current;
+    if (!el) return;
+
+    const start = el.selectionStart ?? 0;
+    const end = el.selectionEnd ?? 0;
+    const value = draft;
+
+    const result = handler({ start, end, value });
+    setDraft(result.text);
+    setDirty(true);
+
+    requestAnimationFrame(() => {
+      el.focus();
+      el.selectionStart = result.selectStart;
+      el.selectionEnd = result.selectEnd;
+    });
+  }
+
+  function wrapSelection(prefix: string, suffix: string, placeholder: string) {
+    withSelection(({ start, end, value }) => {
+      const selected = value.slice(start, end);
+      const content = selected || placeholder;
+      const insert = `${prefix}${content}${suffix}`;
+      const text = replaceRange(value, start, end, insert);
+      const selectStart = start + prefix.length;
+      const selectEnd = selectStart + content.length;
+      return { text, selectStart, selectEnd };
+    });
+  }
+
+  function prefixLines(prefix: string) {
+    withSelection(({ start, end, value }) => {
+      const lineStart = value.lastIndexOf("\n", start - 1) + 1;
+      const lineEndRaw = value.indexOf("\n", end);
+      const lineEnd = lineEndRaw === -1 ? value.length : lineEndRaw;
+      const block = value.slice(lineStart, lineEnd);
+      const lines = block.split("\n").map((l) => `${prefix}${l}`);
+      const insert = lines.join("\n");
+      const text = replaceRange(value, lineStart, lineEnd, insert);
+      const selectStart = start + prefix.length;
+      const selectEnd = end + prefix.length * lines.length;
+      return { text, selectStart, selectEnd };
+    });
+  }
+
+  function insertLink() {
+    withSelection(({ start, end, value }) => {
+      const selected = value.slice(start, end) || "link text";
+      const url = "https://";
+      const insert = `[${selected}](${url})`;
+      const text = replaceRange(value, start, end, insert);
+      const selectStart = start + selected.length + 3;
+      const selectEnd = selectStart + url.length;
+      return { text, selectStart, selectEnd };
+    });
+  }
+
+  function insertCodeBlock() {
+    withSelection(({ start, end, value }) => {
+      const insert = "```\n\n```";
+      const text = replaceRange(value, start, end, insert);
+      const selectStart = start + 4;
+      const selectEnd = start + 4;
+      return { text, selectStart, selectEnd };
+    });
+  }
+
+  function insertProgressionBlock() {
+    const el = taRef.current;
+    if (!el) return;
+    const pos = el.selectionStart ?? 0;
+    openInsertProgression(pos);
   }
 
   function applyChordModal() {
@@ -379,6 +511,65 @@ export function NoteEditor({ activeSlug }: { activeSlug: string | null }) {
 
     setDirty(true);
     setTabModal(null);
+
+    requestAnimationFrame(() => {
+      taRef.current?.focus();
+    });
+  }
+
+  function addProgChord() {
+    setProgModal((m) => {
+      if (!m) return m;
+      const raw = m.chordInput.trim();
+      if (!raw) return { ...m, chordInput: "" };
+      const parts = raw
+        .split(/[,\s]+/g)
+        .map((p) => p.trim())
+        .filter(Boolean);
+      const next = [...m.chords, ...parts];
+      return { ...m, chords: next, chordInput: "" };
+    });
+  }
+
+  function removeProgChord(idx: number) {
+    setProgModal((m) => {
+      if (!m) return m;
+      const next = m.chords.slice();
+      next.splice(idx, 1);
+      return { ...m, chords: next };
+    });
+  }
+
+  function applyProgModal() {
+    if (!progModal) return;
+
+    const barsNum = Number(progModal.bars);
+    const bars =
+      Number.isFinite(barsNum) && barsNum > 0
+        ? Math.floor(barsNum)
+        : DEFAULT_PROG_BARS;
+
+    const block = serializeProgressionBlock({
+      key: progModal.key.trim() || DEFAULT_PROG_KEY,
+      bars,
+      chords: progModal.chords,
+    });
+
+    setDraft((prev) => {
+      if (progModal.mode === "insert") {
+        return insertAtPos(prev, progModal.pos, block);
+      }
+      if (!progModal.range) return prev;
+      return replaceRange(
+        prev,
+        progModal.range.start,
+        progModal.range.end,
+        block,
+      );
+    });
+
+    setDirty(true);
+    setProgModal(null);
 
     requestAnimationFrame(() => {
       taRef.current?.focus();
@@ -537,6 +728,125 @@ export function NoteEditor({ activeSlug }: { activeSlug: string | null }) {
           </div>
 
           <TabsContent value="write" className="m-0 h-[calc(100%-48px)] p-3">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => prefixLines("# ")}
+                >
+                  H1
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => prefixLines("## ")}
+                >
+                  H2
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => prefixLines("### ")}
+                >
+                  H3
+                </Button>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => wrapSelection("**", "**", "bold text")}
+                >
+                  Bold
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => wrapSelection("*", "*", "italic text")}
+                >
+                  Italic
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => wrapSelection("`", "`", "code")}
+                >
+                  Code
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={insertCodeBlock}
+                >
+                  Code block
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={insertLink}
+                >
+                  Link
+                </Button>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => prefixLines("> ")}
+                >
+                  Quote
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => prefixLines("- ")}
+                >
+                  Bulleted
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => prefixLines("1. ")}
+                >
+                  Numbered
+                </Button>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => openInsertChord(taRef.current?.selectionStart ?? 0)}
+                >
+                  Chord block
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => openInsertTab(taRef.current?.selectionStart ?? 0)}
+                >
+                  Tab block
+                </Button>
+                <Button type="button" size="sm" onClick={insertProgressionBlock}>
+                  Progression
+                </Button>
+              </div>
+            </div>
+
             <Textarea
               ref={taRef as any}
               value={draft}
@@ -583,6 +893,21 @@ export function NoteEditor({ activeSlug }: { activeSlug: string | null }) {
                   onClick={() => openEditTab(menu.pos)}
                 >
                   Edit tab block
+                </button>
+
+                <button
+                  className="w-full rounded px-2 py-2 text-left text-sm hover:bg-muted"
+                  onClick={() => openInsertProgression(menu.pos)}
+                >
+                  Insert progression block
+                </button>
+
+                <button
+                  className="w-full rounded px-2 py-2 text-left text-sm hover:bg-muted disabled:opacity-50"
+                  disabled={!menu.hasProgBlock}
+                  onClick={() => openEditProgression(menu.pos)}
+                >
+                  Edit progression block
                 </button>
               </div>
             )}
@@ -912,6 +1237,129 @@ export function NoteEditor({ activeSlug }: { activeSlug: string | null }) {
                 Cancel
               </Button>
               <Button onClick={applyTabModal}>Apply</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {progModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setProgModal(null)}
+        >
+          <div
+            className="w-full max-w-2xl rounded border bg-background p-4 shadow"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-sm font-medium">
+              {progModal.mode === "insert"
+                ? "Insert progression"
+                : "Edit progression"}
+            </div>
+
+            <div className="mt-3 grid gap-3">
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="grid gap-1">
+                  <Label className="text-xs text-muted-foreground">Key</Label>
+                  <Input
+                    value={progModal.key}
+                    onChange={(e) =>
+                      setProgModal((m) =>
+                        m ? { ...m, key: e.target.value } : m,
+                      )
+                    }
+                    placeholder={DEFAULT_PROG_KEY}
+                  />
+                </div>
+
+                <div className="grid gap-1">
+                  <Label className="text-xs text-muted-foreground">
+                    Bars
+                  </Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={progModal.bars}
+                    onChange={(e) =>
+                      setProgModal((m) =>
+                        m ? { ...m, bars: e.target.value } : m,
+                      )
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-2">
+                <Label className="text-xs text-muted-foreground">
+                  Chords / Roman Numerals
+                </Label>
+                <div className="flex flex-wrap gap-2">
+                  <Input
+                    value={progModal.chordInput}
+                    onChange={(e) =>
+                      setProgModal((m) =>
+                        m ? { ...m, chordInput: e.target.value } : m,
+                      )
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addProgChord();
+                      }
+                    }}
+                    placeholder="I V vi IV or C G Am F"
+                    className="min-w-[240px] flex-1"
+                  />
+                  <Button type="button" variant="secondary" onClick={addProgChord}>
+                    Add
+                  </Button>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {progModal.chords.length ? (
+                    progModal.chords.map((ch, idx) => (
+                      <span
+                        key={`${ch}-${idx}`}
+                        className="inline-flex items-center gap-2 rounded-full border px-2 py-1 text-xs"
+                      >
+                        {ch}
+                        <button
+                          type="button"
+                          className="rounded-full px-1 hover:bg-muted"
+                          onClick={() => removeProgChord(idx)}
+                          aria-label={`Remove ${ch}`}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))
+                  ) : (
+                    <div className="text-xs text-muted-foreground">
+                      Add chords to build the progression.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid gap-1">
+                <Label className="text-xs text-muted-foreground">
+                  Preview
+                </Label>
+                <ProgressionBlockPreview
+                  data={{
+                    key: progModal.key,
+                    bars: Number(progModal.bars) || DEFAULT_PROG_BARS,
+                    chords: progModal.chords,
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setProgModal(null)}>
+                Cancel
+              </Button>
+              <Button onClick={applyProgModal}>Apply</Button>
             </div>
           </div>
         </div>

@@ -1,4 +1,3 @@
-// src/components/note-editor/blocks/chord/chord-block-preview.tsx
 import * as React from "react";
 import { ensureSix, StringValue } from "./types";
 import {
@@ -8,8 +7,16 @@ import {
 } from "./parse";
 import { ChordDiagram } from "./chord-diagram";
 
+function slugifyChord(name: string) {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "");
+}
+
 export function ChordBlockPreview({ data }: { data: any }) {
   const name = data.name ?? "Unnamed chord";
+  const anchor = slugifyChord(name);
 
   const strings =
     parseCsvLineToStringValues(data.strings) ??
@@ -20,7 +27,10 @@ export function ChordBlockPreview({ data }: { data: any }) {
   const fixedStrings = ensureSix(strings, "x" as StringValue);
 
   return (
-    <div className="mb-3 inline-block rounded border p-3">
+    <div
+      id={anchor ? `chord-${anchor}` : undefined}
+      className="mb-3 inline-block rounded border p-3"
+    >
       {/* text color is theme-aware now */}
       <ChordDiagram
         name={name}

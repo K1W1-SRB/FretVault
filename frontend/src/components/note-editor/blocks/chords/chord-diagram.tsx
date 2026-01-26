@@ -1,4 +1,3 @@
-// src/components/note-editor/blocks/chord/chord-diagram.tsx
 import * as React from "react";
 import { ensureSix, FingerValue, StringValue } from "./types";
 
