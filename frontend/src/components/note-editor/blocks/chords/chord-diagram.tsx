@@ -35,7 +35,6 @@ export function ChordDiagram({
   const padLeft = 18;
   const padRight = 18;
 
-  // Use currentColor so theme controls it (no hardcoded white)
   const stroke = "currentColor";
   const text = "currentColor";
   const dot = "currentColor";

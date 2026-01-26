@@ -1,5 +1,6 @@
 import * as React from "react";
 import { ChordBlockPreview, parseBlockPayload } from "../blocks/chords";
+import { TabBlockPreview, parseTabBlockBody } from "../blocks/tab";
 
 export const mdComponents = {
   h1: ({ children, ...props }: any) => (
@@ -32,6 +33,10 @@ export const mdComponents = {
     if (lang === "chord") {
       const data = parseBlockPayload(raw);
       return <ChordBlockPreview data={data} />;
+    }
+    if (lang === "tab") {
+      const data = parseTabBlockBody(raw);
+      return <TabBlockPreview data={data} />;
     }
 
     return (

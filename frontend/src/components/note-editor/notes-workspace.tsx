@@ -12,6 +12,10 @@ import { NoteEditor } from "./note-editor";
 export function NotesWorkspace() {
   const [activeSlug, setActiveSlug] = React.useState<string | null>(null);
 
+  const handleNoteDeleted = () => {
+    setActiveSlug(null);
+  };
+
   return (
     <ResizablePanelGroup direction="horizontal" className="h-full">
       <ResizablePanel defaultSize={30} minSize={20} maxSize={45}>
@@ -22,7 +26,7 @@ export function NotesWorkspace() {
 
       <ResizablePanel defaultSize={70} minSize={55}>
         <div className="flex h-full flex-col">
-          <NoteTopbar activeSlug={activeSlug} />
+          <NoteTopbar activeSlug={activeSlug} onDeleted={handleNoteDeleted} />
           <div className="flex-1 overflow-hidden">
             <NoteEditor activeSlug={activeSlug} />
           </div>
