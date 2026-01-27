@@ -83,6 +83,15 @@ export const notesApi = {
       }
     ),
 
+  resolveLinks: (workspaceId: string, slugs: string[]) =>
+    http<{ results: Record<string, { id: string; title: string; slug: string } | null> }>(
+      `/workspaces/${encodeURIComponent(workspaceId)}/notes/resolve-links`,
+      {
+        method: "POST",
+        body: JSON.stringify({ slugs }),
+      }
+    ),
+
   remove: (workspaceId: string, id: string) =>
     http<void>(
       `/workspaces/${encodeURIComponent(

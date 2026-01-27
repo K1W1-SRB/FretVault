@@ -15,6 +15,7 @@ import { NotesService } from './notes.service';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
 import { ListNotesQuery } from './dto/list-notes.query';
+import { ResolveLinksDto } from './dto/resolve-links.dto';
 
 @UseGuards(AuthGuard('jwt'))
 @Controller('workspaces/:workspaceId/notes')
@@ -46,6 +47,15 @@ export class NotesController {
     @Param('slug') slug: string,
   ) {
     return this.notes.findBySlug(workspaceId, slug, req.user.id);
+  }
+
+  @Post('resolve-links')
+  resolveLinks(
+    @Req() req: any,
+    @Param('workspaceId') workspaceId: string,
+    @Body() dto: ResolveLinksDto,
+  ) {
+    return this.notes.resolveLinks(workspaceId, req.user.id, dto);
   }
 
   @Get(':noteId')

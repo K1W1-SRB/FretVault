@@ -10,6 +10,7 @@ import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
 import { ListNotesQuery } from './dto/list-notes.query';
 import { Prisma, WorkspaceRole } from '@prisma/client';
+import { ResolveLinksDto } from './dto/resolve-links.dto';
 
 @Injectable()
 export class NotesService {
@@ -318,6 +319,37 @@ export class NotesService {
 
     if (!note) throw new NotFoundException('Note not found');
     return note;
+  }
+
+  async resolveLinks(
+    workspaceId: string,
+    userId: number,
+    dto: ResolveLinksDto,
+  ) {
+    await this.membership(workspaceId, userId);
+
+    const raw = Array.isArray(dto?.slugs) ? dto.slugs : [];
+    const cleaned = raw
+      .map((slug) => (typeof slug === 'string' ? slug.trim() : ''))
+      .filter(Boolean);
+    const unique = [...new Set(cleaned)];
+
+    if (!unique.length) return { results: {} };
+
+    const notes = await this.prisma.note.findMany({
+      where: { workspaceId, slug: { in: unique } },
+      select: { id: true, title: true, slug: true },
+    });
+
+    const map = new Map(notes.map((n) => [n.slug, n]));
+    const results: Record<string, { id: string; title: string; slug: string } | null> =
+      {};
+
+    for (const slug of unique) {
+      results[slug] = map.get(slug) ?? null;
+    }
+
+    return { results };
   }
 
   async update(

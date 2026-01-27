@@ -1,4 +1,3 @@
-// src/components/note-editor/note-editor.tsx
 "use client";
 
 import * as React from "react";
@@ -14,7 +13,11 @@ import { Label } from "@/components/ui/label";
 import { notesApi } from "@/lib/notes-api";
 import { useSelectedWorkspace } from "@/hooks/selected-workspace-provider";
 
-import { mdComponents } from "../note-editor/utils/markdown-components";
+import { createMdComponents } from "../note-editor/utils/markdown-components";
+import {
+  extractInternalLinkSlugs,
+  remarkInternalLinks,
+} from "../note-editor/utils/internal-links";
 import {
   normalizeMd,
   insertAtPos,
@@ -46,6 +49,11 @@ import { OptionSelect } from "./ui/option-select";
 
 type TabRow = (number | null)[];
 type TabGrid = TabRow[];
+type LinkContext = {
+  replaceStart: number;
+  replaceEnd: number;
+  query: string;
+};
 
 function parseTuningString(
   tuning: string | undefined,
@@ -133,7 +141,34 @@ function gridToAscii(grid: TabGrid, strings: string[], columns: number) {
   return lines.join("\n");
 }
 
-export function NoteEditor({ activeSlug }: { activeSlug: string | null }) {
+function getLinkContext(value: string, cursor: number): LinkContext | null {
+  if (!value) return null;
+  const before = value.slice(0, cursor);
+  const lastOpen = before.lastIndexOf("[[");
+  if (lastOpen === -1) return null;
+
+  const sinceOpen = before.slice(lastOpen + 2);
+  const closeIndex = sinceOpen.indexOf("]]");
+  if (closeIndex !== -1) return null;
+
+  const aliasIdx = sinceOpen.indexOf("|");
+  const slugPart = aliasIdx === -1 ? sinceOpen : sinceOpen.slice(0, aliasIdx);
+  if (!/^[a-z0-9_-]*$/.test(slugPart)) return null;
+
+  return {
+    replaceStart: lastOpen + 2,
+    replaceEnd: lastOpen + 2 + slugPart.length,
+    query: slugPart,
+  };
+}
+
+export function NoteEditor({
+  activeSlug,
+  onNavigateSlug,
+}: {
+  activeSlug: string | null;
+  onNavigateSlug?: (slug: string) => void;
+}) {
   const qc = useQueryClient();
   const { selectedWorkspaceId } = useSelectedWorkspace();
 
@@ -146,8 +181,15 @@ export function NoteEditor({ activeSlug }: { activeSlug: string | null }) {
 
   const [draft, setDraft] = React.useState("");
   const [dirty, setDirty] = React.useState(false);
+  const normalizedDraft = React.useMemo(() => normalizeMd(draft), [draft]);
+  const rootRef = React.useRef<HTMLDivElement | null>(null);
+  const previewRef = React.useRef<HTMLDivElement | null>(null);
 
   const taRef = React.useRef<HTMLTextAreaElement | null>(null);
+  const [linkContext, setLinkContext] = React.useState<LinkContext | null>(
+    null,
+  );
+  const [activeSuggestion, setActiveSuggestion] = React.useState(0);
 
   const [menu, setMenu] = React.useState<null | {
     x: number;
@@ -191,6 +233,25 @@ export function NoteEditor({ activeSlug }: { activeSlug: string | null }) {
     chordInput: string;
   }>(null);
 
+  const notesListQuery = useQuery({
+    queryKey: ["notes", selectedWorkspaceId, { q: "" }],
+    queryFn: () => notesApi.list(selectedWorkspaceId as string, undefined),
+    enabled: !!selectedWorkspaceId,
+  });
+
+  const noteSuggestions = React.useMemo(() => {
+    const notes = notesListQuery.data ?? [];
+    const query = linkContext?.query ?? "";
+    if (!linkContext) return [];
+    if (!notes.length) return [];
+    const q = query.toLowerCase();
+    const filtered = notes
+      .filter((n) => n.slug)
+      .filter((n) => !q || n.slug.toLowerCase().includes(q))
+      .slice(0, 6);
+    return filtered;
+  }, [notesListQuery.data, linkContext]);
+
   React.useEffect(() => {
     if (noteQuery.data) {
       setDraft(normalizeMd(noteQuery.data.contentMd ?? ""));
@@ -224,6 +285,115 @@ export function NoteEditor({ activeSlug }: { activeSlug: string | null }) {
       setDirty(false);
     },
   });
+
+  const createNoteMutation = useMutation({
+    mutationFn: async (slug: string) => {
+      if (!selectedWorkspaceId) throw new Error("No workspace selected");
+      const title = slug.trim();
+      if (!title) throw new Error("Invalid slug");
+      return notesApi.create(selectedWorkspaceId, {
+        title,
+        slug: title,
+        tags: [],
+        contentMd: "",
+      });
+    },
+    onSuccess: async (created) => {
+      if (!selectedWorkspaceId || !created?.slug) return;
+      await qc.invalidateQueries({ queryKey: ["notes", selectedWorkspaceId] });
+      onNavigateSlug?.(created.slug);
+    },
+  });
+
+  const internalLinkSlugs = React.useMemo(
+    () => extractInternalLinkSlugs(normalizedDraft),
+    [normalizedDraft],
+  );
+
+  const resolveLinksQuery = useQuery({
+    queryKey: ["note-link-resolve", selectedWorkspaceId, internalLinkSlugs],
+    queryFn: () =>
+      notesApi.resolveLinks(selectedWorkspaceId as string, internalLinkSlugs),
+    enabled: !!selectedWorkspaceId && internalLinkSlugs.length > 0,
+  });
+
+  const internalLinks = resolveLinksQuery.data?.results;
+
+  const mdComponents = React.useMemo(
+    () =>
+      createMdComponents({
+        onInternalNavigate: (slug) => {
+          if (resolveLinksQuery.isSuccess && internalLinks?.[slug] === null) {
+            if (!createNoteMutation.isPending) {
+              createNoteMutation.mutate(slug);
+            }
+            return;
+          }
+          onNavigateSlug?.(slug);
+        },
+        internalLinks,
+      }),
+    [
+      internalLinks,
+      onNavigateSlug,
+      resolveLinksQuery.isSuccess,
+      createNoteMutation.isPending,
+      createNoteMutation.mutate,
+    ],
+  );
+
+  React.useEffect(() => {
+    function handleDocumentClick(event: MouseEvent) {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      if (!rootRef.current || !rootRef.current.contains(target)) return;
+
+      const anchor = target.closest("a");
+      const text = target.textContent?.slice(0, 120) ?? "";
+      const rawHref = anchor?.getAttribute("href") ?? "";
+
+      if (!anchor) return;
+
+      const isInternal = rawHref.startsWith("internal:");
+      const isSlug =
+        /^[a-z0-9_-]+$/.test(rawHref) &&
+        !rawHref.startsWith("http://") &&
+        !rawHref.startsWith("https://") &&
+        !rawHref.startsWith("mailto:") &&
+        !rawHref.startsWith("#") &&
+        !rawHref.startsWith("/");
+
+      const textSlug = !rawHref && /^[a-z0-9_-]+$/.test(text) ? text : null;
+
+      if (!isInternal && !isSlug && !textSlug) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      const slug = isInternal
+        ? rawHref.slice("internal:".length)
+        : isSlug
+          ? rawHref
+          : textSlug!;
+      if (resolveLinksQuery.isSuccess && internalLinks?.[slug] === null) {
+        if (!createNoteMutation.isPending) {
+          createNoteMutation.mutate(slug);
+        }
+        return;
+      }
+      onNavigateSlug?.(slug);
+    }
+
+    document.addEventListener("click", handleDocumentClick, true);
+    return () => {
+      document.removeEventListener("click", handleDocumentClick, true);
+    };
+  }, [
+    onNavigateSlug,
+    resolveLinksQuery.isSuccess,
+    internalLinks,
+    createNoteMutation.isPending,
+    createNoteMutation.mutate,
+  ]);
 
   function openContextMenu(e: React.MouseEvent) {
     e.preventDefault();
@@ -360,11 +530,11 @@ export function NoteEditor({ activeSlug }: { activeSlug: string | null }) {
   }
 
   function withSelection(
-    handler: (args: {
-      start: number;
-      end: number;
-      value: string;
-    }) => { text: string; selectStart: number; selectEnd: number },
+    handler: (args: { start: number; end: number; value: string }) => {
+      text: string;
+      selectStart: number;
+      selectEnd: number;
+    },
   ) {
     const el = taRef.current;
     if (!el) return;
@@ -667,6 +837,37 @@ export function NoteEditor({ activeSlug }: { activeSlug: string | null }) {
     });
   }
 
+  function updateLinkState(value: string, cursor: number | null) {
+    if (cursor === null) {
+      setLinkContext(null);
+      return;
+    }
+    const ctx = getLinkContext(value, cursor);
+    setLinkContext(ctx);
+    setActiveSuggestion(0);
+  }
+
+  function applySuggestion(slug: string) {
+    if (!linkContext) return;
+    const text = draft;
+    const next = replaceRange(
+      text,
+      linkContext.replaceStart,
+      linkContext.replaceEnd,
+      slug,
+    );
+    setDraft(next);
+    setDirty(true);
+    const nextPos = linkContext.replaceStart + slug.length;
+    requestAnimationFrame(() => {
+      if (!taRef.current) return;
+      taRef.current.focus();
+      taRef.current.selectionStart = nextPos;
+      taRef.current.selectionEnd = nextPos;
+      updateLinkState(next, nextPos);
+    });
+  }
+
   if (!activeSlug) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -698,7 +899,11 @@ export function NoteEditor({ activeSlug }: { activeSlug: string | null }) {
   }
 
   return (
-    <div className="flex h-full flex-col" onClick={closeContextMenu}>
+    <div
+      className="flex h-full flex-col"
+      onClick={closeContextMenu}
+      ref={rootRef}
+    >
       <div className="flex items-center justify-between border-b px-3 py-2">
         <div className="min-w-0">
           <div className="truncate text-sm font-medium">
@@ -830,34 +1035,112 @@ export function NoteEditor({ activeSlug }: { activeSlug: string | null }) {
                 <Button
                   type="button"
                   size="sm"
-                  onClick={() => openInsertChord(taRef.current?.selectionStart ?? 0)}
+                  onClick={() =>
+                    openInsertChord(taRef.current?.selectionStart ?? 0)
+                  }
                 >
                   Chord block
                 </Button>
                 <Button
                   type="button"
                   size="sm"
-                  onClick={() => openInsertTab(taRef.current?.selectionStart ?? 0)}
+                  onClick={() =>
+                    openInsertTab(taRef.current?.selectionStart ?? 0)
+                  }
                 >
                   Tab block
                 </Button>
-                <Button type="button" size="sm" onClick={insertProgressionBlock}>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={insertProgressionBlock}
+                >
                   Progression
                 </Button>
               </div>
             </div>
 
-            <Textarea
-              ref={taRef as any}
-              value={draft}
-              onChange={(e) => {
-                setDraft(e.target.value);
-                setDirty(true);
-              }}
-              onContextMenu={openContextMenu}
-              className="h-full resize-none font-mono"
-              placeholder="Write markdown... Right-click to insert/edit chord or tab blocks."
-            />
+            <div className="relative h-full">
+              <Textarea
+                ref={taRef as any}
+                value={draft}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setDraft(next);
+                  setDirty(true);
+                  updateLinkState(next, e.target.selectionStart);
+                }}
+                onClick={(e) =>
+                  updateLinkState(
+                    (e.target as HTMLTextAreaElement).value,
+                    (e.target as HTMLTextAreaElement).selectionStart,
+                  )
+                }
+                onKeyUp={(e) =>
+                  updateLinkState(
+                    (e.target as HTMLTextAreaElement).value,
+                    (e.target as HTMLTextAreaElement).selectionStart,
+                  )
+                }
+                onKeyDown={(e) => {
+                  if (!linkContext || noteSuggestions.length === 0) return;
+                  if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    setActiveSuggestion((prev) =>
+                      Math.min(prev + 1, noteSuggestions.length - 1),
+                    );
+                    return;
+                  }
+                  if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setActiveSuggestion((prev) => Math.max(prev - 1, 0));
+                    return;
+                  }
+                  if (e.key === "Enter" || e.key === "Tab") {
+                    e.preventDefault();
+                    const chosen = noteSuggestions[activeSuggestion];
+                    if (chosen?.slug) applySuggestion(chosen.slug);
+                    return;
+                  }
+                  if (e.key === "Escape") {
+                    e.preventDefault();
+                    setLinkContext(null);
+                    return;
+                  }
+                }}
+                onContextMenu={openContextMenu}
+                className="h-full resize-none font-mono"
+                placeholder="Write markdown... Right-click to insert/edit chord or tab blocks."
+              />
+
+              {linkContext && noteSuggestions.length > 0 && (
+                <div className="absolute bottom-3 left-3 z-50 w-64 rounded border bg-background shadow">
+                  <div className="px-2 py-1 text-xs text-muted-foreground">
+                    Link to note
+                  </div>
+                  <div className="max-h-48 overflow-auto py-1">
+                    {noteSuggestions.map((n, idx) => (
+                      <button
+                        key={n.id}
+                        type="button"
+                        className={`w-full px-2 py-1 text-left text-sm hover:bg-muted ${
+                          idx === activeSuggestion ? "bg-muted" : ""
+                        }`}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          applySuggestion(n.slug);
+                        }}
+                      >
+                        <div className="font-medium">{n.title || n.slug}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {n.slug}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {menu && (
               <div
@@ -917,9 +1200,12 @@ export function NoteEditor({ activeSlug }: { activeSlug: string | null }) {
             value="preview"
             className="m-0 h-[calc(100%-48px)] overflow-auto p-4"
           >
-            <div className="prose max-w-none">
-              <ReactMarkdown components={mdComponents}>
-                {normalizeMd(draft) || "_Nothing to preview._"}
+            <div className="prose max-w-none" ref={previewRef}>
+              <ReactMarkdown
+                components={mdComponents}
+                remarkPlugins={[remarkInternalLinks]}
+              >
+                {normalizedDraft || "_Nothing to preview._"}
               </ReactMarkdown>
             </div>
           </TabsContent>
@@ -1118,7 +1404,9 @@ export function NoteEditor({ activeSlug }: { activeSlug: string | null }) {
                 </div>
 
                 <div className="grid gap-1 md:col-span-2">
-                  <Label className="text-xs text-muted-foreground">Tuning</Label>
+                  <Label className="text-xs text-muted-foreground">
+                    Tuning
+                  </Label>
                   <Input
                     value={tabModal.strings.join(",")}
                     onChange={(e) => updateTabStrings(e.target.value)}
@@ -1273,9 +1561,7 @@ export function NoteEditor({ activeSlug }: { activeSlug: string | null }) {
                 </div>
 
                 <div className="grid gap-1">
-                  <Label className="text-xs text-muted-foreground">
-                    Bars
-                  </Label>
+                  <Label className="text-xs text-muted-foreground">Bars</Label>
                   <Input
                     type="number"
                     min={1}
@@ -1310,7 +1596,11 @@ export function NoteEditor({ activeSlug }: { activeSlug: string | null }) {
                     placeholder="I V vi IV or C G Am F"
                     className="min-w-[240px] flex-1"
                   />
-                  <Button type="button" variant="secondary" onClick={addProgChord}>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={addProgChord}
+                  >
                     Add
                   </Button>
                 </div>
@@ -1342,9 +1632,7 @@ export function NoteEditor({ activeSlug }: { activeSlug: string | null }) {
               </div>
 
               <div className="grid gap-1">
-                <Label className="text-xs text-muted-foreground">
-                  Preview
-                </Label>
+                <Label className="text-xs text-muted-foreground">Preview</Label>
                 <ProgressionBlockPreview
                   data={{
                     key: progModal.key,
