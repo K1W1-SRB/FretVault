@@ -6,13 +6,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 import { notesApi } from "@/lib/notes-api";
 import { useSelectedWorkspace } from "@/hooks/selected-workspace-provider";
 
+import { ChordModal } from "../note-editor/components/chord-modal";
+import { NoteEditorContextMenu } from "../note-editor/components/note-editor-context-menu";
+import { NoteEditorHeader } from "../note-editor/components/note-editor-header";
+import { NoteEditorLinkSuggestions } from "../note-editor/components/note-editor-link-suggestions";
+import { NoteEditorToolbar } from "../note-editor/components/note-editor-toolbar";
+import { ProgressionModal } from "../note-editor/components/progression-modal";
+import { TabModal } from "../note-editor/components/tab-modal";
 import { createMdComponents } from "../note-editor/utils/markdown-components";
 import {
   extractInternalLinkSlugs,
@@ -26,11 +30,9 @@ import {
 import {
   ensureSix,
   findChordBlockAtPos,
-  FingerValue,
   serializeChordBlock,
-  StringValue,
-  ChordDiagram,
 } from "../note-editor/blocks/chords";
+import type { FingerValue, StringValue } from "../note-editor/blocks/chords";
 import {
   DEFAULT_TIME as DEFAULT_TAB_TIME,
   DEFAULT_TUNING as DEFAULT_TAB_TUNING,
@@ -42,104 +44,21 @@ import {
   DEFAULT_BARS as DEFAULT_PROG_BARS,
   DEFAULT_KEY as DEFAULT_PROG_KEY,
   findProgressionBlockAtPos,
-  ProgressionBlockPreview,
   serializeProgressionBlock,
 } from "../note-editor/blocks/progression";
-import { OptionSelect } from "./ui/option-select";
-
-type TabRow = (number | null)[];
-type TabGrid = TabRow[];
-type LinkContext = {
-  replaceStart: number;
-  replaceEnd: number;
-  query: string;
-};
-
-function parseTuningString(
-  tuning: string | undefined,
-  fallback: string,
-): string[] {
-  const raw = (tuning ?? fallback).split(",").map((s) => s.trim());
-  const cleaned = raw.filter(Boolean);
-  return cleaned.length ? cleaned : fallback.split(",").map((s) => s.trim());
-}
-
-function buildEmptyGrid(rows: number, columns: number): TabGrid {
-  return Array.from({ length: rows }, () =>
-    Array.from({ length: columns }, () => null),
-  );
-}
-
-function asciiToGrid(
-  tabText: string,
-  fallbackStrings: string[],
-  fallbackColumns: number,
-) {
-  const rawLines = String(tabText ?? "")
-    .replace(/\r\n/g, "\n")
-    .split("\n")
-    .map((l) => l.trimEnd())
-    .filter((l) => l.length);
-
-  if (!rawLines.length) {
-    return {
-      strings: fallbackStrings,
-      columns: fallbackColumns,
-      grid: buildEmptyGrid(fallbackStrings.length, fallbackColumns),
-    };
-  }
-
-  const parsed = rawLines.map((line, idx) => {
-    const first = line.indexOf("|");
-    const last = line.lastIndexOf("|");
-    let label = fallbackStrings[idx] ?? `String ${idx + 1}`;
-    let body = line;
-    if (first !== -1) {
-      label = line.slice(0, first).trim() || label;
-      body =
-        last !== -1 && last > first
-          ? line.slice(first + 1, last)
-          : line.slice(first + 1);
-    }
-    return { label, body };
-  });
-
-  const columns = Math.max(
-    fallbackColumns,
-    ...parsed.map((p) => p.body.length),
-  );
-
-  const strings = parsed.map((p) => p.label);
-  const grid = buildEmptyGrid(strings.length, columns);
-
-  for (let r = 0; r < parsed.length; r++) {
-    const body = parsed[r].body;
-    for (let c = 0; c < columns; c++) {
-      const ch = body[c];
-      if (!ch) continue;
-      if (ch === "-") continue;
-      const n = Number(ch);
-      if (Number.isFinite(n)) grid[r][c] = n;
-    }
-  }
-
-  return { strings, columns, grid };
-}
-
-function gridToAscii(grid: TabGrid, strings: string[], columns: number) {
-  const label = (s: string) => s.padEnd(3, " ");
-  const lines: string[] = [];
-  for (let r = 0; r < strings.length; r++) {
-    let line = `${label(strings[r])}|`;
-    for (let c = 0; c < columns; c++) {
-      const f = grid[r]?.[c];
-      line += typeof f === "number" ? String(f) : "-";
-    }
-    line += "|";
-    lines.push(line);
-  }
-  return lines.join("\n");
-}
+import {
+  asciiToGrid,
+  buildEmptyGrid,
+  gridToAscii,
+  parseTuningString,
+} from "../note-editor/utils/tab-grid";
+import type {
+  ChordModalState,
+  ContextMenuState,
+  LinkContext,
+  ProgressionModalState,
+  TabModalState,
+} from "../note-editor/types";
 
 function getLinkContext(value: string, cursor: number): LinkContext | null {
   if (!value) return null;
@@ -191,47 +110,16 @@ export function NoteEditor({
   );
   const [activeSuggestion, setActiveSuggestion] = React.useState(0);
 
-  const [menu, setMenu] = React.useState<null | {
-    x: number;
-    y: number;
-    pos: number;
-    hasChordBlock: boolean;
-    hasTabBlock: boolean;
-    hasProgBlock: boolean;
-  }>(null);
+  const [menu, setMenu] = React.useState<ContextMenuState | null>(null);
 
-  const [chordModal, setChordModal] = React.useState<null | {
-    mode: "insert" | "edit";
-    pos: number;
-    range?: { start: number; end: number };
-    name: string;
-    strings: StringValue[];
-    fingers: FingerValue[];
-    includeFingers: boolean;
-  }>(null);
+  const [chordModal, setChordModal] = React.useState<ChordModalState | null>(
+    null,
+  );
 
-  const [tabModal, setTabModal] = React.useState<null | {
-    mode: "insert" | "edit";
-    pos: number;
-    range?: { start: number; end: number };
-    name: string;
-    strings: string[];
-    time: string;
-    bpm: string;
-    capo: string;
-    columns: number;
-    grid: TabGrid;
-  }>(null);
+  const [tabModal, setTabModal] = React.useState<TabModalState | null>(null);
 
-  const [progModal, setProgModal] = React.useState<null | {
-    mode: "insert" | "edit";
-    pos: number;
-    range?: { start: number; end: number };
-    key: string;
-    bars: string;
-    chords: string[];
-    chordInput: string;
-  }>(null);
+  const [progModal, setProgModal] =
+    React.useState<ProgressionModalState | null>(null);
 
   const notesListQuery = useQuery({
     queryKey: ["notes", selectedWorkspaceId, { q: "" }],
@@ -293,7 +181,7 @@ export function NoteEditor({
       if (!title) throw new Error("Invalid slug");
       return notesApi.create(selectedWorkspaceId, {
         title,
-        slug: title,
+
         tags: [],
         contentMd: "",
       });
@@ -687,29 +575,6 @@ export function NoteEditor({
     });
   }
 
-  function addProgChord() {
-    setProgModal((m) => {
-      if (!m) return m;
-      const raw = m.chordInput.trim();
-      if (!raw) return { ...m, chordInput: "" };
-      const parts = raw
-        .split(/[,\s]+/g)
-        .map((p) => p.trim())
-        .filter(Boolean);
-      const next = [...m.chords, ...parts];
-      return { ...m, chords: next, chordInput: "" };
-    });
-  }
-
-  function removeProgChord(idx: number) {
-    setProgModal((m) => {
-      if (!m) return m;
-      const next = m.chords.slice();
-      next.splice(idx, 1);
-      return { ...m, chords: next };
-    });
-  }
-
   function applyProgModal() {
     if (!progModal) return;
 
@@ -743,97 +608,6 @@ export function NoteEditor({
 
     requestAnimationFrame(() => {
       taRef.current?.focus();
-    });
-  }
-
-  const fretOptions = React.useMemo(() => {
-    const nums = Array.from({ length: 25 }).map((_, i) => String(i)); // 0..24
-    return ["x", ...nums];
-  }, []);
-
-  const fingerOptions = React.useMemo(() => ["x", "1", "2", "3", "4"], []);
-
-  const FRET_CYCLE = [
-    null,
-    0,
-    1,
-    2,
-    3,
-    4,
-    5,
-    6,
-    7,
-    8,
-    9,
-    10,
-    11,
-    12,
-    13,
-    14,
-    15,
-    16,
-    17,
-  ] as const;
-
-  function toggleTabCell(r: number, c: number) {
-    setTabModal((m) => {
-      if (!m) return m;
-      const grid = m.grid.map((row) => [...row]);
-      const cur = grid[r]?.[c];
-      if (cur === undefined) return m;
-
-      const curIndex =
-        typeof cur === "number" &&
-        Number.isInteger(cur) &&
-        cur >= 0 &&
-        cur <= 17
-          ? cur + 1
-          : 0;
-      const next = FRET_CYCLE[(curIndex + 1) % FRET_CYCLE.length];
-      grid[r][c] = next;
-      return { ...m, grid };
-    });
-  }
-
-  function updateTabColumns(raw: string) {
-    const parsed = Number(raw);
-    if (!Number.isFinite(parsed)) return;
-    const nextColumns = Math.max(8, Math.min(128, Math.floor(parsed)));
-    setTabModal((m) => {
-      if (!m) return m;
-      const grid = m.grid.map((row) => {
-        const clone = [...row];
-        if (clone.length < nextColumns) {
-          return [
-            ...clone,
-            ...Array.from({ length: nextColumns - clone.length }, () => null),
-          ];
-        }
-        clone.length = nextColumns;
-        return clone;
-      });
-      return { ...m, columns: nextColumns, grid };
-    });
-  }
-
-  function updateTabStrings(raw: string) {
-    const nextStrings = raw
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (!nextStrings.length) return;
-
-    setTabModal((m) => {
-      if (!m) return m;
-      const columns = m.columns;
-      const nextGrid = buildEmptyGrid(nextStrings.length, columns);
-      const copyRows = Math.min(m.grid.length, nextStrings.length);
-      for (let r = 0; r < copyRows; r++) {
-        for (let c = 0; c < columns; c++) {
-          nextGrid[r][c] = m.grid[r]?.[c] ?? null;
-        }
-      }
-      return { ...m, strings: nextStrings, grid: nextGrid };
     });
   }
 
@@ -904,24 +678,12 @@ export function NoteEditor({
       onClick={closeContextMenu}
       ref={rootRef}
     >
-      <div className="flex items-center justify-between border-b px-3 py-2">
-        <div className="min-w-0">
-          <div className="truncate text-sm font-medium">
-            {noteQuery.data.title || "Untitled"}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {dirty ? "Unsaved changes" : "Up to date"}
-          </div>
-        </div>
-
-        <Button
-          size="sm"
-          onClick={() => saveMutation.mutate()}
-          disabled={!dirty || saveMutation.isPending}
-        >
-          {saveMutation.isPending ? "Saving..." : "Save"}
-        </Button>
-      </div>
+      <NoteEditorHeader
+        title={noteQuery.data.title || "Untitled"}
+        dirty={dirty}
+        isSaving={saveMutation.isPending}
+        onSave={() => saveMutation.mutate()}
+      />
 
       <div className="flex-1 overflow-hidden">
         <Tabs defaultValue="write" className="h-full">
@@ -933,132 +695,19 @@ export function NoteEditor({
           </div>
 
           <TabsContent value="write" className="m-0 h-[calc(100%-48px)] p-3">
-            <div className="mb-3 flex flex-wrap items-center gap-2">
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => prefixLines("# ")}
-                >
-                  H1
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => prefixLines("## ")}
-                >
-                  H2
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => prefixLines("### ")}
-                >
-                  H3
-                </Button>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => wrapSelection("**", "**", "bold text")}
-                >
-                  Bold
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => wrapSelection("*", "*", "italic text")}
-                >
-                  Italic
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => wrapSelection("`", "`", "code")}
-                >
-                  Code
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={insertCodeBlock}
-                >
-                  Code block
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={insertLink}
-                >
-                  Link
-                </Button>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => prefixLines("> ")}
-                >
-                  Quote
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => prefixLines("- ")}
-                >
-                  Bulleted
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => prefixLines("1. ")}
-                >
-                  Numbered
-                </Button>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() =>
-                    openInsertChord(taRef.current?.selectionStart ?? 0)
-                  }
-                >
-                  Chord block
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() =>
-                    openInsertTab(taRef.current?.selectionStart ?? 0)
-                  }
-                >
-                  Tab block
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={insertProgressionBlock}
-                >
-                  Progression
-                </Button>
-              </div>
-            </div>
+            <NoteEditorToolbar
+              onPrefixLines={prefixLines}
+              onWrapSelection={wrapSelection}
+              onInsertCodeBlock={insertCodeBlock}
+              onInsertLink={insertLink}
+              onInsertChordBlock={() =>
+                openInsertChord(taRef.current?.selectionStart ?? 0)
+              }
+              onInsertTabBlock={() =>
+                openInsertTab(taRef.current?.selectionStart ?? 0)
+              }
+              onInsertProgressionBlock={insertProgressionBlock}
+            />
 
             <div className="relative h-full">
               <Textarea
@@ -1114,85 +763,24 @@ export function NoteEditor({
               />
 
               {linkContext && noteSuggestions.length > 0 && (
-                <div className="absolute bottom-3 left-3 z-50 w-64 rounded border bg-background shadow">
-                  <div className="px-2 py-1 text-xs text-muted-foreground">
-                    Link to note
-                  </div>
-                  <div className="max-h-48 overflow-auto py-1">
-                    {noteSuggestions.map((n, idx) => (
-                      <button
-                        key={n.id}
-                        type="button"
-                        className={`w-full px-2 py-1 text-left text-sm hover:bg-muted ${
-                          idx === activeSuggestion ? "bg-muted" : ""
-                        }`}
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          applySuggestion(n.slug);
-                        }}
-                      >
-                        <div className="font-medium">{n.title || n.slug}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {n.slug}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <NoteEditorLinkSuggestions
+                  suggestions={noteSuggestions}
+                  activeIndex={activeSuggestion}
+                  onSelect={applySuggestion}
+                />
               )}
             </div>
 
             {menu && (
-              <div
-                className="fixed z-50 w-56 rounded border bg-background p-1 shadow"
-                style={{ left: menu.x, top: menu.y }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <button
-                  className="w-full rounded px-2 py-2 text-left text-sm hover:bg-muted"
-                  onClick={() => openInsertChord(menu.pos)}
-                >
-                  Insert chord block
-                </button>
-
-                <button
-                  className="w-full rounded px-2 py-2 text-left text-sm hover:bg-muted disabled:opacity-50"
-                  disabled={!menu.hasChordBlock}
-                  onClick={() => openEditChord(menu.pos)}
-                >
-                  Edit chord block
-                </button>
-
-                <button
-                  className="w-full rounded px-2 py-2 text-left text-sm hover:bg-muted"
-                  onClick={() => openInsertTab(menu.pos)}
-                >
-                  Insert tab block
-                </button>
-
-                <button
-                  className="w-full rounded px-2 py-2 text-left text-sm hover:bg-muted disabled:opacity-50"
-                  disabled={!menu.hasTabBlock}
-                  onClick={() => openEditTab(menu.pos)}
-                >
-                  Edit tab block
-                </button>
-
-                <button
-                  className="w-full rounded px-2 py-2 text-left text-sm hover:bg-muted"
-                  onClick={() => openInsertProgression(menu.pos)}
-                >
-                  Insert progression block
-                </button>
-
-                <button
-                  className="w-full rounded px-2 py-2 text-left text-sm hover:bg-muted disabled:opacity-50"
-                  disabled={!menu.hasProgBlock}
-                  onClick={() => openEditProgression(menu.pos)}
-                >
-                  Edit progression block
-                </button>
-              </div>
+              <NoteEditorContextMenu
+                menu={menu}
+                onInsertChord={openInsertChord}
+                onEditChord={openEditChord}
+                onInsertTab={openInsertTab}
+                onEditTab={openEditTab}
+                onInsertProgression={openInsertProgression}
+                onEditProgression={openEditProgression}
+              />
             )}
           </TabsContent>
 
@@ -1213,444 +801,30 @@ export function NoteEditor({
       </div>
 
       {chordModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={() => setChordModal(null)}
-        >
-          <div
-            className="w-full max-w-lg rounded border bg-background p-4 shadow"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="text-sm font-medium">
-              {chordModal.mode === "insert" ? "Insert chord" : "Edit chord"}
-            </div>
-
-            <div className="mt-3 grid gap-3">
-              <div className="grid gap-1">
-                <div className="text-xs text-muted-foreground">Name</div>
-                <Input
-                  value={chordModal.name}
-                  onChange={(e) =>
-                    setChordModal((m) =>
-                      m ? { ...m, name: e.target.value } : m,
-                    )
-                  }
-                  placeholder="Dm7"
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <div className="text-xs text-muted-foreground">
-                  Strings (low E → high E)
-                </div>
-
-                <div className="grid grid-cols-6 gap-2">
-                  {chordModal.strings.map((v, idx) => (
-                    <div key={`s-${idx}`} className="grid gap-1">
-                      <div className="text-[10px] text-muted-foreground text-center">
-                        {["E", "A", "D", "G", "B", "e"][idx]}
-                      </div>
-                      <OptionSelect
-                        value={String(v)}
-                        options={fretOptions}
-                        onChange={(val) => {
-                          const parsed: StringValue =
-                            val === "x" ? "x" : Number(val);
-                          setChordModal((m) => {
-                            if (!m) return m;
-                            const next = m.strings.slice();
-                            next[idx] = parsed;
-                            return { ...m, strings: next };
-                          });
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex items-center justify-between gap-2 pt-2">
-                  <div className="text-xs text-muted-foreground">
-                    Finger numbers (optional)
-                  </div>
-                  <button
-                    className="text-xs underline"
-                    onClick={() =>
-                      setChordModal((m) =>
-                        m ? { ...m, includeFingers: !m.includeFingers } : m,
-                      )
-                    }
-                  >
-                    {chordModal.includeFingers ? "Disable" : "Enable"}
-                  </button>
-                </div>
-
-                {chordModal.includeFingers && (
-                  <div className="grid grid-cols-6 gap-2">
-                    {chordModal.fingers.map((v, idx) => (
-                      <div key={`f-${idx}`} className="grid gap-1">
-                        <div className="text-[10px] text-muted-foreground text-center">
-                          {["E", "A", "D", "G", "B", "e"][idx]}
-                        </div>
-                        <OptionSelect
-                          value={String(v)}
-                          options={fingerOptions}
-                          onChange={(val) => {
-                            const parsed: FingerValue =
-                              val === "x" ? "x" : Number(val);
-                            setChordModal((m) => {
-                              if (!m) return m;
-                              const next = m.fingers.slice();
-                              next[idx] = parsed;
-                              return { ...m, fingers: next };
-                            });
-                          }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <div className="text-xs text-muted-foreground pt-2">
-                  Preview:
-                </div>
-                <div className="rounded border p-3 inline-block">
-                  <ChordDiagram
-                    name={chordModal.name || "Chord"}
-                    strings={chordModal.strings}
-                    fingers={
-                      chordModal.includeFingers ? chordModal.fingers : undefined
-                    }
-                    className="text-foreground"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setChordModal(null)}>
-                Cancel
-              </Button>
-              <Button onClick={applyChordModal}>Apply</Button>
-            </div>
-          </div>
-        </div>
+        <ChordModal
+          value={chordModal}
+          onChange={setChordModal}
+          onClose={() => setChordModal(null)}
+          onApply={applyChordModal}
+        />
       )}
 
       {tabModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={() => setTabModal(null)}
-        >
-          <div
-            className="w-full max-w-2xl rounded border bg-background p-4 shadow"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="text-sm font-medium">
-              {tabModal.mode === "insert" ? "Insert tab" : "Edit tab"}
-            </div>
-
-            <div className="mt-3 grid gap-3">
-              <div className="grid gap-1">
-                <Label className="text-xs text-muted-foreground">Name</Label>
-                <Input
-                  value={tabModal.name}
-                  onChange={(e) =>
-                    setTabModal((m) => (m ? { ...m, name: e.target.value } : m))
-                  }
-                  placeholder="Verse riff"
-                />
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-3">
-                <div className="grid gap-1">
-                  <Label className="text-xs text-muted-foreground">Time</Label>
-                  <Input
-                    value={tabModal.time}
-                    onChange={(e) =>
-                      setTabModal((m) =>
-                        m ? { ...m, time: e.target.value } : m,
-                      )
-                    }
-                    placeholder={DEFAULT_TAB_TIME}
-                  />
-                </div>
-
-                <div className="grid gap-1">
-                  <Label className="text-xs text-muted-foreground">BPM</Label>
-                  <Input
-                    value={tabModal.bpm}
-                    onChange={(e) =>
-                      setTabModal((m) =>
-                        m ? { ...m, bpm: e.target.value } : m,
-                      )
-                    }
-                    placeholder="120"
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-3">
-                <div className="grid gap-1">
-                  <Label className="text-xs text-muted-foreground">Capo</Label>
-                  <Input
-                    value={tabModal.capo}
-                    onChange={(e) =>
-                      setTabModal((m) =>
-                        m ? { ...m, capo: e.target.value } : m,
-                      )
-                    }
-                    placeholder="0"
-                  />
-                </div>
-
-                <div className="grid gap-1 md:col-span-2">
-                  <Label className="text-xs text-muted-foreground">
-                    Tuning
-                  </Label>
-                  <Input
-                    value={tabModal.strings.join(",")}
-                    onChange={(e) => updateTabStrings(e.target.value)}
-                    placeholder={DEFAULT_TAB_TUNING}
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-3">
-                <div className="grid gap-1">
-                  <Label className="text-xs text-muted-foreground">
-                    Columns
-                  </Label>
-                  <Input
-                    type="number"
-                    min={8}
-                    max={128}
-                    value={tabModal.columns}
-                    onChange={(e) => updateTabColumns(e.target.value)}
-                  />
-                </div>
-
-                <div className="grid gap-1 md:col-span-2">
-                  <Label className="text-xs text-muted-foreground">
-                    Quick actions
-                  </Label>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() =>
-                        setTabModal((m) =>
-                          m
-                            ? {
-                                ...m,
-                                grid: buildEmptyGrid(
-                                  m.strings.length,
-                                  m.columns,
-                                ),
-                              }
-                            : m,
-                        )
-                      }
-                    >
-                      Clear grid
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="overflow-auto rounded-xl border border-border bg-background/70 shadow-inner">
-                <table className="border-collapse select-none w-full">
-                  <thead>
-                    <tr>
-                      <th className="text-left px-3 py-2 text-muted-foreground text-xs font-medium">
-                        String
-                      </th>
-                      {Array.from({ length: tabModal.columns }, (_, i) => (
-                        <th
-                          key={i}
-                          className="px-1 text-[10px] text-muted-foreground"
-                        >
-                          {i + 1}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tabModal.strings.map((s, r) => (
-                      <tr key={r}>
-                        <td className="px-3 py-2 text-sm text-foreground font-medium">
-                          {s}
-                        </td>
-                        {Array.from({ length: tabModal.columns }, (_, c) => (
-                          <td key={c} className="p-0.5">
-                            <button
-                              onClick={() => toggleTabCell(r, c)}
-                              className={`w-8 h-8 rounded-md border border-border text-sm font-semibold grid place-items-center transition-colors
-                                ${
-                                  tabModal.grid[r][c] !== null
-                                    ? "bg-primary text-primary-foreground hover:bg-primary/80"
-                                    : "bg-muted hover:bg-muted/70"
-                                }
-                              `}
-                              title={`Row ${r + 1}, Col ${c + 1}`}
-                            >
-                              {tabModal.grid[r][c] ?? ""}
-                            </button>
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="grid gap-1">
-                <Label className="text-xs text-muted-foreground">
-                  ASCII Preview
-                </Label>
-                <Textarea
-                  value={gridToAscii(
-                    tabModal.grid,
-                    tabModal.strings,
-                    tabModal.columns,
-                  )}
-                  readOnly
-                  rows={6}
-                  className="font-mono"
-                />
-              </div>
-            </div>
-
-            <div className="mt-4 flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setTabModal(null)}>
-                Cancel
-              </Button>
-              <Button onClick={applyTabModal}>Apply</Button>
-            </div>
-          </div>
-        </div>
+        <TabModal
+          value={tabModal}
+          onChange={setTabModal}
+          onClose={() => setTabModal(null)}
+          onApply={applyTabModal}
+        />
       )}
 
       {progModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={() => setProgModal(null)}
-        >
-          <div
-            className="w-full max-w-2xl rounded border bg-background p-4 shadow"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="text-sm font-medium">
-              {progModal.mode === "insert"
-                ? "Insert progression"
-                : "Edit progression"}
-            </div>
-
-            <div className="mt-3 grid gap-3">
-              <div className="grid gap-3 md:grid-cols-3">
-                <div className="grid gap-1">
-                  <Label className="text-xs text-muted-foreground">Key</Label>
-                  <Input
-                    value={progModal.key}
-                    onChange={(e) =>
-                      setProgModal((m) =>
-                        m ? { ...m, key: e.target.value } : m,
-                      )
-                    }
-                    placeholder={DEFAULT_PROG_KEY}
-                  />
-                </div>
-
-                <div className="grid gap-1">
-                  <Label className="text-xs text-muted-foreground">Bars</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={progModal.bars}
-                    onChange={(e) =>
-                      setProgModal((m) =>
-                        m ? { ...m, bars: e.target.value } : m,
-                      )
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-2">
-                <Label className="text-xs text-muted-foreground">
-                  Chords / Roman Numerals
-                </Label>
-                <div className="flex flex-wrap gap-2">
-                  <Input
-                    value={progModal.chordInput}
-                    onChange={(e) =>
-                      setProgModal((m) =>
-                        m ? { ...m, chordInput: e.target.value } : m,
-                      )
-                    }
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addProgChord();
-                      }
-                    }}
-                    placeholder="I V vi IV or C G Am F"
-                    className="min-w-[240px] flex-1"
-                  />
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={addProgChord}
-                  >
-                    Add
-                  </Button>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {progModal.chords.length ? (
-                    progModal.chords.map((ch, idx) => (
-                      <span
-                        key={`${ch}-${idx}`}
-                        className="inline-flex items-center gap-2 rounded-full border px-2 py-1 text-xs"
-                      >
-                        {ch}
-                        <button
-                          type="button"
-                          className="rounded-full px-1 hover:bg-muted"
-                          onClick={() => removeProgChord(idx)}
-                          aria-label={`Remove ${ch}`}
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))
-                  ) : (
-                    <div className="text-xs text-muted-foreground">
-                      Add chords to build the progression.
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid gap-1">
-                <Label className="text-xs text-muted-foreground">Preview</Label>
-                <ProgressionBlockPreview
-                  data={{
-                    key: progModal.key,
-                    bars: Number(progModal.bars) || DEFAULT_PROG_BARS,
-                    chords: progModal.chords,
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="mt-4 flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setProgModal(null)}>
-                Cancel
-              </Button>
-              <Button onClick={applyProgModal}>Apply</Button>
-            </div>
-          </div>
-        </div>
+        <ProgressionModal
+          value={progModal}
+          onChange={setProgModal}
+          onClose={() => setProgModal(null)}
+          onApply={applyProgModal}
+        />
       )}
     </div>
   );

@@ -342,8 +342,10 @@ export class NotesService {
     });
 
     const map = new Map(notes.map((n) => [n.slug, n]));
-    const results: Record<string, { id: string; title: string; slug: string } | null> =
-      {};
+    const results: Record<
+      string,
+      { id: string; title: string; slug: string } | null
+    > = {};
 
     for (const slug of unique) {
       results[slug] = map.get(slug) ?? null;
