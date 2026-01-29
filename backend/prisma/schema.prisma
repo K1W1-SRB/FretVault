@@ -139,6 +139,10 @@ model PracticePlan {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Link back to a source note (optional)
+  sourceNoteSlug  String?
+  sourceNoteTitle String?
+
   // Optional: move plans into workspaces later; this lets you start now without breaking legacy
   workspaceId String?
   workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)

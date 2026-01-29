@@ -17,12 +17,30 @@ export class PracticePlansService {
     dto: CreatePracticePlanDto,
     ownerId: number,
   ): Promise<PracticePlanType> {
+    const items = dto.items ?? [];
     const plan = await this.prisma.practicePlan.create({
       data: {
         name: dto.name,
         description: dto.description,
         ownerId,
+        workspaceId: dto.workspaceId ?? undefined,
+        sourceNoteSlug: dto.sourceNoteSlug ?? undefined,
+        sourceNoteTitle: dto.sourceNoteTitle ?? undefined,
+        ...(items.length
+          ? {
+              items: {
+                create: items.map((item) => ({
+                  title: item.title,
+                  category: item.category,
+                  description: item.description,
+                  duration: item.duration,
+                  order: item.order,
+                })),
+              },
+            }
+          : {}),
       },
+      include: { items: true },
     });
     return plan;
   }
@@ -70,8 +88,19 @@ export class PracticePlansService {
     const UpdatedPracticePlan = await this.prisma.practicePlan.update({
       where: { id },
       data: {
-        name: dto.name,
-        description: dto.description,
+        ...(dto.name !== undefined ? { name: dto.name } : {}),
+        ...(dto.description !== undefined
+          ? { description: dto.description }
+          : {}),
+        ...(dto.workspaceId !== undefined
+          ? { workspaceId: dto.workspaceId }
+          : {}),
+        ...(dto.sourceNoteSlug !== undefined
+          ? { sourceNoteSlug: dto.sourceNoteSlug }
+          : {}),
+        ...(dto.sourceNoteTitle !== undefined
+          ? { sourceNoteTitle: dto.sourceNoteTitle }
+          : {}),
         ...(dto.items && {
           items: {
             deleteMany: {}, // remove old ones

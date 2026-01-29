@@ -8,6 +8,8 @@ type NoteEditorContextMenuProps = {
   onEditTab: (pos: number) => void;
   onInsertProgression: (pos: number) => void;
   onEditProgression: (pos: number) => void;
+  onInsertPractice: (pos: number) => void;
+  onEditPractice: (pos: number) => void;
 };
 
 export function NoteEditorContextMenu({
@@ -18,6 +20,8 @@ export function NoteEditorContextMenu({
   onEditTab,
   onInsertProgression,
   onEditProgression,
+  onInsertPractice,
+  onEditPractice,
 }: NoteEditorContextMenuProps) {
   return (
     <div
@@ -68,6 +72,21 @@ export function NoteEditorContextMenu({
         onClick={() => onEditProgression(menu.pos)}
       >
         Edit progression block
+      </button>
+
+      <button
+        className="w-full rounded px-2 py-2 text-left text-sm hover:bg-muted"
+        onClick={() => onInsertPractice(menu.pos)}
+      >
+        Insert practice routine block
+      </button>
+
+      <button
+        className="w-full rounded px-2 py-2 text-left text-sm hover:bg-muted disabled:opacity-50"
+        disabled={!menu.hasPracticeBlock}
+        onClick={() => onEditPractice(menu.pos)}
+      >
+        Edit practice routine block
       </button>
     </div>
   );

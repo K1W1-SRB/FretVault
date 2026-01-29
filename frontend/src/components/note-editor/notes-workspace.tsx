@@ -8,9 +8,15 @@ import {
 import { NotesSidebar } from "./notes-sidebar";
 import { NoteTopbar } from "./notes-topbar";
 import { NoteEditor } from "./note-editor";
+import { useSearchParams } from "next/navigation";
+import { useSelectedWorkspace } from "@/hooks/selected-workspace-provider";
 
 export function NotesWorkspace() {
   const [activeSlug, setActiveSlug] = React.useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const { selectedWorkspaceId, setWorkspaceId } = useSelectedWorkspace();
+  const slugParam = searchParams.get("slug");
+  const workspaceParam = searchParams.get("workspaceId");
   function handleSelectSlug(slug: string) {
     setActiveSlug(slug);
   }
@@ -18,6 +24,16 @@ export function NotesWorkspace() {
   const handleNoteDeleted = () => {
     setActiveSlug(null);
   };
+
+  React.useEffect(() => {
+    if (workspaceParam && workspaceParam !== selectedWorkspaceId) {
+      setWorkspaceId(workspaceParam);
+    }
+
+    if (slugParam) {
+      setActiveSlug(slugParam);
+    }
+  }, [slugParam, workspaceParam, selectedWorkspaceId, setWorkspaceId]);
 
   return (
     <ResizablePanelGroup direction="horizontal" className="h-full">

@@ -8,6 +8,7 @@ type NoteEditorToolbarProps = {
   onInsertChordBlock: () => void;
   onInsertTabBlock: () => void;
   onInsertProgressionBlock: () => void;
+  onInsertPracticeBlock: () => void;
 };
 
 export function NoteEditorToolbar({
@@ -18,6 +19,7 @@ export function NoteEditorToolbar({
   onInsertChordBlock,
   onInsertTabBlock,
   onInsertProgressionBlock,
+  onInsertPracticeBlock,
 }: NoteEditorToolbarProps) {
   return (
     <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -117,6 +119,9 @@ export function NoteEditorToolbar({
         </Button>
         <Button type="button" size="sm" onClick={onInsertProgressionBlock}>
           Progression
+        </Button>
+        <Button type="button" size="sm" onClick={onInsertPracticeBlock}>
+          Practice routine
         </Button>
       </div>
     </div>

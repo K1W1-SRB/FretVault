@@ -40,6 +40,9 @@ type PracticePlan = {
   id: number;
   name: string;
   description?: string | null;
+  workspaceId?: string | null;
+  sourceNoteSlug?: string | null;
+  sourceNoteTitle?: string | null;
   items: PracticeItem[];
 };
 
@@ -229,17 +232,40 @@ export default function PracticePlanView() {
             </>
           ) : (
             <>
-              <Button
-                className="max-w-20"
-                onClick={() => router.push(`/dashboard/practice/${id}/play`)}
-                variant={"default"}
-              >
-                Play
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  className="max-w-20"
+                  onClick={() => router.push(`/dashboard/practice/${id}/play`)}
+                  variant={"default"}
+                >
+                  Play
+                </Button>
+                {plan.sourceNoteSlug && plan.workspaceId && (
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      router.push(
+                        `/dashboard/notebook?slug=${encodeURIComponent(
+                          plan.sourceNoteSlug ?? "",
+                        )}&workspaceId=${encodeURIComponent(
+                          plan.workspaceId ?? "",
+                        )}`,
+                      )
+                    }
+                  >
+                    Open source note
+                  </Button>
+                )}
+              </div>
               <h1 className="text-2xl font-bold tracking-tight">{plan.name}</h1>
               <p className="text-sm text-muted-foreground">
                 {plan.description}
               </p>
+              {plan.sourceNoteTitle ? (
+                <p className="text-xs text-muted-foreground">
+                  From note: {plan.sourceNoteTitle}
+                </p>
+              ) : null}
             </>
           )}
         </div>

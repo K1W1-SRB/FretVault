@@ -5,6 +5,10 @@ import {
   parseProgressionBlockBody,
   ProgressionBlockPreview,
 } from "../blocks/progression";
+import {
+  parsePracticeBlockBody,
+  PracticeBlockPreview,
+} from "../blocks/practice";
 import { InternalLink, ResolvedInternalLink } from "./internal-link";
 
 export function createMdComponents({
@@ -94,6 +98,10 @@ export function createMdComponents({
       if (lang === "prog") {
         const data = parseProgressionBlockBody(raw);
         return <ProgressionBlockPreview data={data} />;
+      }
+      if (lang === "practice") {
+        const data = parsePracticeBlockBody(raw);
+        return <PracticeBlockPreview data={data} />;
       }
 
       return (

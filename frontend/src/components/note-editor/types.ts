@@ -1,4 +1,5 @@
 import type { FingerValue, StringValue } from "./blocks/chords";
+import type { PracticeStep } from "./blocks/practice";
 
 export type TabRow = (number | null)[];
 export type TabGrid = TabRow[];
@@ -16,6 +17,7 @@ export type ContextMenuState = {
   hasChordBlock: boolean;
   hasTabBlock: boolean;
   hasProgBlock: boolean;
+  hasPracticeBlock: boolean;
 };
 
 export type ChordModalState = {
@@ -49,6 +51,16 @@ export type ProgressionModalState = {
   bars: string;
   chords: string[];
   chordInput: string;
+};
+
+export type PracticeModalState = {
+  mode: "insert" | "edit";
+  pos: number;
+  range?: { start: number; end: number };
+  goal: string;
+  duration: string;
+  planId: string;
+  steps: PracticeStep[];
 };
 
 export type NoteSuggestion = {

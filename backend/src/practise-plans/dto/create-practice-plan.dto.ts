@@ -16,8 +16,21 @@ export class CreatePracticePlanDto {
   @IsString()
   description?: string;
 
+  @IsOptional()
+  @IsString()
+  workspaceId?: string;
+
+  @IsOptional()
+  @IsString()
+  sourceNoteSlug?: string;
+
+  @IsOptional()
+  @IsString()
+  sourceNoteTitle?: string;
+
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreatePracticeItemDto)
-  items: CreatePracticeItemDto[];
+  items?: CreatePracticeItemDto[];
 }

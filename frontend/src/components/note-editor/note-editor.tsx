@@ -4,7 +4,7 @@ import * as React from "react";
 import ReactMarkdown from "react-markdown";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 
 import { notesApi } from "@/lib/notes-api";
@@ -15,6 +15,7 @@ import { NoteEditorContextMenu } from "../note-editor/components/note-editor-con
 import { NoteEditorHeader } from "../note-editor/components/note-editor-header";
 import { NoteEditorLinkSuggestions } from "../note-editor/components/note-editor-link-suggestions";
 import { NoteEditorToolbar } from "../note-editor/components/note-editor-toolbar";
+import { PracticeModal } from "../note-editor/components/practice-modal";
 import { ProgressionModal } from "../note-editor/components/progression-modal";
 import { TabModal } from "../note-editor/components/tab-modal";
 import { createMdComponents } from "../note-editor/utils/markdown-components";
@@ -24,62 +25,19 @@ import {
 } from "../note-editor/utils/internal-links";
 import {
   normalizeMd,
-  insertAtPos,
   replaceRange,
 } from "../note-editor/utils/markdown";
-import {
-  ensureSix,
-  findChordBlockAtPos,
-  serializeChordBlock,
-} from "../note-editor/blocks/chords";
-import type { FingerValue, StringValue } from "../note-editor/blocks/chords";
-import {
-  DEFAULT_TIME as DEFAULT_TAB_TIME,
-  DEFAULT_TUNING as DEFAULT_TAB_TUNING,
-  findTabBlockAtPos,
-  serializeTabBlock,
-  TabBlockData,
-} from "../note-editor/blocks/tab";
-import {
-  DEFAULT_BARS as DEFAULT_PROG_BARS,
-  DEFAULT_KEY as DEFAULT_PROG_KEY,
-  findProgressionBlockAtPos,
-  serializeProgressionBlock,
-} from "../note-editor/blocks/progression";
-import {
-  asciiToGrid,
-  buildEmptyGrid,
-  gridToAscii,
-  parseTuningString,
-} from "../note-editor/utils/tab-grid";
+import { findChordBlockAtPos } from "../note-editor/blocks/chords";
+import { findTabBlockAtPos } from "../note-editor/blocks/tab";
+import { findProgressionBlockAtPos } from "../note-editor/blocks/progression";
+import { findPracticeBlockAtPos } from "../note-editor/blocks/practice";
+import { fetchPracticePlans } from "../note-editor/blocks/practice/sync";
+import { useLinkSuggestions } from "../note-editor/hooks/use-link-suggestions";
+import { useBlockModals } from "../note-editor/hooks/use-block-modals";
+import { usePracticeModal } from "../note-editor/hooks/use-practice-modal";
 import type {
-  ChordModalState,
   ContextMenuState,
-  LinkContext,
-  ProgressionModalState,
-  TabModalState,
 } from "../note-editor/types";
-
-function getLinkContext(value: string, cursor: number): LinkContext | null {
-  if (!value) return null;
-  const before = value.slice(0, cursor);
-  const lastOpen = before.lastIndexOf("[[");
-  if (lastOpen === -1) return null;
-
-  const sinceOpen = before.slice(lastOpen + 2);
-  const closeIndex = sinceOpen.indexOf("]]");
-  if (closeIndex !== -1) return null;
-
-  const aliasIdx = sinceOpen.indexOf("|");
-  const slugPart = aliasIdx === -1 ? sinceOpen : sinceOpen.slice(0, aliasIdx);
-  if (!/^[a-z0-9_-]*$/.test(slugPart)) return null;
-
-  return {
-    replaceStart: lastOpen + 2,
-    replaceEnd: lastOpen + 2 + slugPart.length,
-    query: slugPart,
-  };
-}
 
 export function NoteEditor({
   activeSlug,
@@ -105,21 +63,36 @@ export function NoteEditor({
   const previewRef = React.useRef<HTMLDivElement | null>(null);
 
   const taRef = React.useRef<HTMLTextAreaElement | null>(null);
-  const [linkContext, setLinkContext] = React.useState<LinkContext | null>(
-    null,
-  );
-  const [activeSuggestion, setActiveSuggestion] = React.useState(0);
 
   const [menu, setMenu] = React.useState<ContextMenuState | null>(null);
-
-  const [chordModal, setChordModal] = React.useState<ChordModalState | null>(
-    null,
+  const [activeTab, setActiveTab] = React.useState<"write" | "preview">(
+    "write",
   );
+  const closeContextMenu = React.useCallback(() => setMenu(null), []);
 
-  const [tabModal, setTabModal] = React.useState<TabModalState | null>(null);
-
-  const [progModal, setProgModal] =
-    React.useState<ProgressionModalState | null>(null);
+  const {
+    chordModal,
+    setChordModal,
+    tabModal,
+    setTabModal,
+    progModal,
+    setProgModal,
+    openInsertChord,
+    openInsertTab,
+    openInsertProgression,
+    openEditChord,
+    openEditTab,
+    openEditProgression,
+    applyChordModal,
+    applyTabModal,
+    applyProgModal,
+  } = useBlockModals({
+    draft,
+    setDraft,
+    setDirty,
+    taRef,
+    closeContextMenu,
+  });
 
   const notesListQuery = useQuery({
     queryKey: ["notes", selectedWorkspaceId, { q: "" }],
@@ -127,18 +100,52 @@ export function NoteEditor({
     enabled: !!selectedWorkspaceId,
   });
 
-  const noteSuggestions = React.useMemo(() => {
-    const notes = notesListQuery.data ?? [];
-    const query = linkContext?.query ?? "";
-    if (!linkContext) return [];
-    if (!notes.length) return [];
-    const q = query.toLowerCase();
-    const filtered = notes
-      .filter((n) => n.slug)
-      .filter((n) => !q || n.slug.toLowerCase().includes(q))
-      .slice(0, 6);
-    return filtered;
-  }, [notesListQuery.data, linkContext]);
+  const practicePlansQuery = useQuery({
+    queryKey: ["practice-plans"],
+    queryFn: fetchPracticePlans,
+  });
+
+  const practicePlans = React.useMemo(
+    () => practicePlansQuery.data ?? [],
+    [practicePlansQuery.data],
+  );
+
+  const {
+    practiceModal,
+    setPracticeModal,
+    practiceSyncing,
+    practicePlanLoading,
+    openInsertPractice,
+    openEditPractice,
+    handlePracticePlanSelect,
+    applyPracticeModal,
+  } = usePracticeModal({
+    draft,
+    setDraft,
+    setDirty,
+    taRef,
+    practicePlans,
+    noteTitle: noteQuery.data?.title,
+    noteSlug: noteQuery.data?.slug,
+    selectedWorkspaceId,
+    qc,
+    closeContextMenu,
+  });
+
+  const {
+    linkContext,
+    noteSuggestions,
+    activeSuggestion,
+    setActiveSuggestion,
+    updateLinkState,
+    applySuggestion,
+  } = useLinkSuggestions({
+    draft,
+    setDraft,
+    setDirty,
+    taRef,
+    notes: notesListQuery.data ?? [],
+  });
 
   React.useEffect(() => {
     if (noteQuery.data) {
@@ -293,6 +300,7 @@ export function NoteEditor({
     const chord = findChordBlockAtPos(draft, pos);
     const tab = findTabBlockAtPos(draft, pos);
     const prog = findProgressionBlockAtPos(draft, pos);
+    const practice = findPracticeBlockAtPos(draft, pos);
 
     setMenu({
       x: e.clientX,
@@ -301,119 +309,7 @@ export function NoteEditor({
       hasChordBlock: !!chord,
       hasTabBlock: !!tab,
       hasProgBlock: !!prog,
-    });
-  }
-
-  function closeContextMenu() {
-    setMenu(null);
-  }
-
-  function openInsertChord(pos: number) {
-    closeContextMenu();
-    setChordModal({
-      mode: "insert",
-      pos,
-      name: "",
-      strings: ["x", "x", "x", "x", "x", "x"],
-      fingers: ["x", "x", "x", "x", "x", "x"],
-      includeFingers: false,
-    });
-  }
-
-  function openInsertTab(pos: number) {
-    closeContextMenu();
-    const strings = parseTuningString(DEFAULT_TAB_TUNING, DEFAULT_TAB_TUNING);
-    const columns = 32;
-    setTabModal({
-      mode: "insert",
-      pos,
-      name: "",
-      strings,
-      time: DEFAULT_TAB_TIME,
-      bpm: "",
-      capo: "",
-      columns,
-      grid: buildEmptyGrid(strings.length, columns),
-    });
-  }
-
-  function openInsertProgression(pos: number) {
-    closeContextMenu();
-    setProgModal({
-      mode: "insert",
-      pos,
-      key: DEFAULT_PROG_KEY,
-      bars: String(DEFAULT_PROG_BARS),
-      chords: ["I", "V", "vi", "IV"],
-      chordInput: "",
-    });
-  }
-
-  function openEditChord(pos: number) {
-    closeContextMenu();
-    const chord = findChordBlockAtPos(draft, pos);
-    if (!chord) return;
-
-    const strings = ensureSix(chord.data.strings ?? null, "x" as StringValue);
-    const fingers = ensureSix(chord.data.fingers ?? null, "x" as FingerValue);
-
-    setChordModal({
-      mode: "edit",
-      pos,
-      range: { start: chord.start, end: chord.end },
-      name: chord.data.name ?? "",
-      strings,
-      fingers,
-      includeFingers: (chord.data.fingers?.length ?? 0) === 6,
-    });
-  }
-
-  function openEditTab(pos: number) {
-    closeContextMenu();
-    const tab = findTabBlockAtPos(draft, pos);
-    if (!tab) return;
-
-    const fallbackStrings = parseTuningString(
-      tab.data.tuning,
-      DEFAULT_TAB_TUNING,
-    );
-    const fallbackColumns = tab.data.columns ?? 32;
-    const parsed = asciiToGrid(
-      tab.data.tab ?? "",
-      fallbackStrings,
-      fallbackColumns,
-    );
-
-    setTabModal({
-      mode: "edit",
-      pos,
-      range: { start: tab.start, end: tab.end },
-      name: tab.data.name ?? "",
-      strings: parsed.strings.length ? parsed.strings : fallbackStrings,
-      time: tab.data.time ?? DEFAULT_TAB_TIME,
-      bpm: typeof tab.data.bpm === "number" ? String(tab.data.bpm) : "",
-      capo: typeof tab.data.capo === "number" ? String(tab.data.capo) : "",
-      columns: parsed.columns,
-      grid: parsed.grid,
-    });
-  }
-
-  function openEditProgression(pos: number) {
-    closeContextMenu();
-    const prog = findProgressionBlockAtPos(draft, pos);
-    if (!prog) return;
-
-    setProgModal({
-      mode: "edit",
-      pos,
-      range: { start: prog.start, end: prog.end },
-      key: prog.data.key ?? DEFAULT_PROG_KEY,
-      bars:
-        typeof prog.data.bars === "number"
-          ? String(prog.data.bars)
-          : String(DEFAULT_PROG_BARS),
-      chords: prog.data.chords ?? [],
-      chordInput: "",
+      hasPracticeBlock: !!practice,
     });
   }
 
@@ -498,149 +394,7 @@ export function NoteEditor({
     openInsertProgression(pos);
   }
 
-  function applyChordModal() {
-    if (!chordModal) return;
 
-    const block = serializeChordBlock({
-      name: chordModal.name.trim(),
-      strings: chordModal.strings,
-      fingers: chordModal.includeFingers ? chordModal.fingers : undefined,
-    });
-
-    setDraft((prev) => {
-      if (chordModal.mode === "insert") {
-        return insertAtPos(prev, chordModal.pos, block);
-      }
-      if (!chordModal.range) return prev;
-      return replaceRange(
-        prev,
-        chordModal.range.start,
-        chordModal.range.end,
-        block,
-      );
-    });
-
-    setDirty(true);
-    setChordModal(null);
-
-    requestAnimationFrame(() => {
-      taRef.current?.focus();
-    });
-  }
-
-  function applyTabModal() {
-    if (!tabModal) return;
-
-    const toNumber = (raw: string) => {
-      const n = Number(raw);
-      return Number.isFinite(n) ? n : undefined;
-    };
-
-    const ascii = gridToAscii(
-      tabModal.grid,
-      tabModal.strings,
-      tabModal.columns,
-    );
-
-    const data: TabBlockData = {
-      name: tabModal.name.trim() || undefined,
-      tuning: tabModal.strings.join(",") || DEFAULT_TAB_TUNING,
-      time: tabModal.time.trim() || DEFAULT_TAB_TIME,
-      bpm: tabModal.bpm.trim() ? toNumber(tabModal.bpm.trim()) : undefined,
-      capo: tabModal.capo.trim() ? toNumber(tabModal.capo.trim()) : undefined,
-      columns: tabModal.columns,
-      tab: ascii.trim() ? ascii : undefined,
-    };
-
-    const block = serializeTabBlock(data);
-
-    setDraft((prev) => {
-      if (tabModal.mode === "insert") {
-        return insertAtPos(prev, tabModal.pos, block);
-      }
-      if (!tabModal.range) return prev;
-      return replaceRange(
-        prev,
-        tabModal.range.start,
-        tabModal.range.end,
-        block,
-      );
-    });
-
-    setDirty(true);
-    setTabModal(null);
-
-    requestAnimationFrame(() => {
-      taRef.current?.focus();
-    });
-  }
-
-  function applyProgModal() {
-    if (!progModal) return;
-
-    const barsNum = Number(progModal.bars);
-    const bars =
-      Number.isFinite(barsNum) && barsNum > 0
-        ? Math.floor(barsNum)
-        : DEFAULT_PROG_BARS;
-
-    const block = serializeProgressionBlock({
-      key: progModal.key.trim() || DEFAULT_PROG_KEY,
-      bars,
-      chords: progModal.chords,
-    });
-
-    setDraft((prev) => {
-      if (progModal.mode === "insert") {
-        return insertAtPos(prev, progModal.pos, block);
-      }
-      if (!progModal.range) return prev;
-      return replaceRange(
-        prev,
-        progModal.range.start,
-        progModal.range.end,
-        block,
-      );
-    });
-
-    setDirty(true);
-    setProgModal(null);
-
-    requestAnimationFrame(() => {
-      taRef.current?.focus();
-    });
-  }
-
-  function updateLinkState(value: string, cursor: number | null) {
-    if (cursor === null) {
-      setLinkContext(null);
-      return;
-    }
-    const ctx = getLinkContext(value, cursor);
-    setLinkContext(ctx);
-    setActiveSuggestion(0);
-  }
-
-  function applySuggestion(slug: string) {
-    if (!linkContext) return;
-    const text = draft;
-    const next = replaceRange(
-      text,
-      linkContext.replaceStart,
-      linkContext.replaceEnd,
-      slug,
-    );
-    setDraft(next);
-    setDirty(true);
-    const nextPos = linkContext.replaceStart + slug.length;
-    requestAnimationFrame(() => {
-      if (!taRef.current) return;
-      taRef.current.focus();
-      taRef.current.selectionStart = nextPos;
-      taRef.current.selectionEnd = nextPos;
-      updateLinkState(next, nextPos);
-    });
-  }
 
   if (!activeSlug) {
     return (
@@ -678,97 +432,99 @@ export function NoteEditor({
       onClick={closeContextMenu}
       ref={rootRef}
     >
-      <NoteEditorHeader
-        title={noteQuery.data.title || "Untitled"}
-        dirty={dirty}
-        isSaving={saveMutation.isPending}
-        onSave={() => saveMutation.mutate()}
-      />
-
       <div className="flex-1 overflow-hidden">
-        <Tabs defaultValue="write" className="h-full">
-          <div className="border-b px-3 py-2">
-            <TabsList>
-              <TabsTrigger value="write">Write</TabsTrigger>
-              <TabsTrigger value="preview">Preview</TabsTrigger>
-            </TabsList>
-          </div>
+        <Tabs
+          value={activeTab}
+          onValueChange={(val) => setActiveTab(val as "write" | "preview")}
+          className="flex h-full flex-col overflow-hidden"
+        >
+          <NoteEditorHeader
+            title={noteQuery.data.title || "Untitled"}
+            dirty={dirty}
+            isSaving={saveMutation.isPending}
+            onSave={() => saveMutation.mutate()}
+          />
 
-          <TabsContent value="write" className="m-0 h-[calc(100%-48px)] p-3">
-            <NoteEditorToolbar
-              onPrefixLines={prefixLines}
-              onWrapSelection={wrapSelection}
-              onInsertCodeBlock={insertCodeBlock}
-              onInsertLink={insertLink}
-              onInsertChordBlock={() =>
-                openInsertChord(taRef.current?.selectionStart ?? 0)
-              }
-              onInsertTabBlock={() =>
-                openInsertTab(taRef.current?.selectionStart ?? 0)
-              }
-              onInsertProgressionBlock={insertProgressionBlock}
-            />
-
-            <div className="relative h-full">
-              <Textarea
-                ref={taRef as any}
-                value={draft}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  setDraft(next);
-                  setDirty(true);
-                  updateLinkState(next, e.target.selectionStart);
-                }}
-                onClick={(e) =>
-                  updateLinkState(
-                    (e.target as HTMLTextAreaElement).value,
-                    (e.target as HTMLTextAreaElement).selectionStart,
-                  )
+          <TabsContent value="write" className="m-0 flex-1 overflow-hidden p-3">
+            <div className="flex h-full flex-col">
+              <NoteEditorToolbar
+                onPrefixLines={prefixLines}
+                onWrapSelection={wrapSelection}
+                onInsertCodeBlock={insertCodeBlock}
+                onInsertLink={insertLink}
+                onInsertChordBlock={() =>
+                  openInsertChord(taRef.current?.selectionStart ?? 0)
                 }
-                onKeyUp={(e) =>
-                  updateLinkState(
-                    (e.target as HTMLTextAreaElement).value,
-                    (e.target as HTMLTextAreaElement).selectionStart,
-                  )
+                onInsertTabBlock={() =>
+                  openInsertTab(taRef.current?.selectionStart ?? 0)
                 }
-                onKeyDown={(e) => {
-                  if (!linkContext || noteSuggestions.length === 0) return;
-                  if (e.key === "ArrowDown") {
-                    e.preventDefault();
-                    setActiveSuggestion((prev) =>
-                      Math.min(prev + 1, noteSuggestions.length - 1),
-                    );
-                    return;
-                  }
-                  if (e.key === "ArrowUp") {
-                    e.preventDefault();
-                    setActiveSuggestion((prev) => Math.max(prev - 1, 0));
-                    return;
-                  }
-                  if (e.key === "Enter" || e.key === "Tab") {
-                    e.preventDefault();
-                    const chosen = noteSuggestions[activeSuggestion];
-                    if (chosen?.slug) applySuggestion(chosen.slug);
-                    return;
-                  }
-                  if (e.key === "Escape") {
-                    e.preventDefault();
-                    setLinkContext(null);
-                    return;
-                  }
-                }}
-                onContextMenu={openContextMenu}
-                className="h-full resize-none font-mono"
-                placeholder="Write markdown... Right-click to insert/edit chord or tab blocks."
+                onInsertProgressionBlock={insertProgressionBlock}
+                onInsertPracticeBlock={() =>
+                  openInsertPractice(taRef.current?.selectionStart ?? 0)
+                }
               />
 
-              {linkContext && noteSuggestions.length > 0 && (
-                <NoteEditorLinkSuggestions
-                  suggestions={noteSuggestions}
-                  activeIndex={activeSuggestion}
-                  onSelect={applySuggestion}
+              <div className="relative flex-1 overflow-hidden">
+                <Textarea
+                  ref={taRef as any}
+                  value={draft}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setDraft(next);
+                    setDirty(true);
+                    updateLinkState(next, e.target.selectionStart);
+                  }}
+                  onClick={(e) =>
+                    updateLinkState(
+                      (e.target as HTMLTextAreaElement).value,
+                      (e.target as HTMLTextAreaElement).selectionStart,
+                    )
+                  }
+                  onKeyUp={(e) =>
+                    updateLinkState(
+                      (e.target as HTMLTextAreaElement).value,
+                      (e.target as HTMLTextAreaElement).selectionStart,
+                    )
+                  }
+                  onKeyDown={(e) => {
+                    if (!linkContext || noteSuggestions.length === 0) return;
+                    if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      setActiveSuggestion((prev) =>
+                        Math.min(prev + 1, noteSuggestions.length - 1),
+                      );
+                      return;
+                    }
+                    if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      setActiveSuggestion((prev) => Math.max(prev - 1, 0));
+                      return;
+                    }
+                    if (e.key === "Enter" || e.key === "Tab") {
+                      e.preventDefault();
+                      const chosen = noteSuggestions[activeSuggestion];
+                      if (chosen?.slug) applySuggestion(chosen.slug);
+                      return;
+                    }
+                    if (e.key === "Escape") {
+                      e.preventDefault();
+                      updateLinkState(draft, null);
+                      return;
+                    }
+                  }}
+                  onContextMenu={openContextMenu}
+                  className="h-full resize-none overflow-auto font-mono field-sizing-fixed"
+                  placeholder="Write markdown... Right-click to insert/edit chord or tab blocks."
                 />
-              )}
+
+                {linkContext && noteSuggestions.length > 0 && (
+                  <NoteEditorLinkSuggestions
+                    suggestions={noteSuggestions}
+                    activeIndex={activeSuggestion}
+                    onSelect={applySuggestion}
+                  />
+                )}
+              </div>
             </div>
 
             {menu && (
@@ -780,13 +536,15 @@ export function NoteEditor({
                 onEditTab={openEditTab}
                 onInsertProgression={openInsertProgression}
                 onEditProgression={openEditProgression}
+                onInsertPractice={openInsertPractice}
+                onEditPractice={openEditPractice}
               />
             )}
           </TabsContent>
 
           <TabsContent
             value="preview"
-            className="m-0 h-[calc(100%-48px)] overflow-auto p-4"
+            className="m-0 flex-1 overflow-auto p-4"
           >
             <div className="prose max-w-none" ref={previewRef}>
               <ReactMarkdown
@@ -824,6 +582,18 @@ export function NoteEditor({
           onChange={setProgModal}
           onClose={() => setProgModal(null)}
           onApply={applyProgModal}
+        />
+      )}
+
+      {practiceModal && (
+        <PracticeModal
+          value={practiceModal}
+          onChange={setPracticeModal}
+          onClose={() => setPracticeModal(null)}
+          onApply={applyPracticeModal}
+          plans={practicePlans}
+          isSyncing={practiceSyncing || practicePlanLoading}
+          onSelectPlan={handlePracticePlanSelect}
         />
       )}
     </div>
