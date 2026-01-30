@@ -1,5 +1,6 @@
 import * as React from "react";
 import { ensureSix, FingerValue, StringValue } from "./types";
+import { buildFretboardLayout } from "../fretboard/layout";
 
 function getWindow(strings: StringValue[], fretsToShow: number) {
   const fretted = strings.filter(
@@ -27,41 +28,36 @@ export function ChordDiagram({
   fretsToShow?: number;
   className?: string;
 }) {
-  const W = 150;
-  const H = 190;
-
-  const padTop = 28;
-  const padLeft = 18;
-  const padRight = 18;
-
   const stroke = "currentColor";
   const text = "currentColor";
   const dot = "currentColor";
   const fingerText = "currentColor";
 
-  const markerY = padTop + 8;
-  const gridTop = padTop + 20;
-  const gridBottom = H - 18;
-  const gridLeft = padLeft;
-  const gridRight = W - padRight;
+  const layout = buildFretboardLayout({
+    width: 150,
+    height: 190,
+    stringCount: 6,
+    fretsToShow,
+  });
 
-  const stringCount = 6;
-  const fretCount = fretsToShow;
-
-  const gridW = gridRight - gridLeft;
-  const gridH = gridBottom - gridTop;
-
-  const stringGap = gridW / (stringCount - 1);
-  const fretGap = gridH / fretCount;
+  const {
+    width: W,
+    height: H,
+    markerY,
+    gridTop,
+    gridBottom,
+    gridLeft,
+    gridRight,
+    fretCount,
+    xForString,
+    yForFretLine,
+    yForFretCenter,
+  } = layout;
 
   const fixedStrings = ensureSix(strings, "x" as StringValue);
   const fixedFingers = fingers ? ensureSix(fingers, "x" as FingerValue) : null;
 
   const { startFret, showNut } = getWindow(fixedStrings, fretsToShow);
-
-  const xForString = (i: number) => gridLeft + i * stringGap;
-  const yForFretLine = (f: number) => gridTop + f * fretGap;
-  const yForFretCenter = (f: number) => gridTop + (f - 0.5) * fretGap;
 
   const dotR = 7;
 
@@ -119,7 +115,7 @@ export function ChordDiagram({
         );
       })}
 
-      {Array.from({ length: stringCount }).map((_, i) => (
+      {Array.from({ length: 6 }).map((_, i) => (
         <line
           key={`s-${i}`}
           x1={xForString(i)}

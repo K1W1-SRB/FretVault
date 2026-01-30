@@ -4,6 +4,8 @@ type NoteEditorContextMenuProps = {
   menu: ContextMenuState;
   onInsertChord: (pos: number) => void;
   onEditChord: (pos: number) => void;
+  onInsertScale: (pos: number) => void;
+  onEditScale: (pos: number) => void;
   onInsertTab: (pos: number) => void;
   onEditTab: (pos: number) => void;
   onInsertProgression: (pos: number) => void;
@@ -16,6 +18,8 @@ export function NoteEditorContextMenu({
   menu,
   onInsertChord,
   onEditChord,
+  onInsertScale,
+  onEditScale,
   onInsertTab,
   onEditTab,
   onInsertProgression,
@@ -42,6 +46,21 @@ export function NoteEditorContextMenu({
         onClick={() => onEditChord(menu.pos)}
       >
         Edit chord block
+      </button>
+
+      <button
+        className="w-full rounded px-2 py-2 text-left text-sm hover:bg-muted"
+        onClick={() => onInsertScale(menu.pos)}
+      >
+        Insert scale block
+      </button>
+
+      <button
+        className="w-full rounded px-2 py-2 text-left text-sm hover:bg-muted disabled:opacity-50"
+        disabled={!menu.hasScaleBlock}
+        onClick={() => onEditScale(menu.pos)}
+      >
+        Edit scale block
       </button>
 
       <button

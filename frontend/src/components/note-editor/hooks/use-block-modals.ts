@@ -21,6 +21,13 @@ import {
   serializeProgressionBlock,
 } from "../blocks/progression";
 import {
+  DEFAULT_SCALE_ROOT,
+  DEFAULT_SCALE_TYPE,
+  findScaleBlockAtPos,
+  normalizePositions,
+  serializeScaleBlock,
+} from "../blocks/scale";
+import {
   asciiToGrid,
   buildEmptyGrid,
   gridToAscii,
@@ -29,6 +36,7 @@ import {
 import type {
   ChordModalState,
   ProgressionModalState,
+  ScaleModalState,
   TabModalState,
 } from "../types";
 
@@ -53,6 +61,8 @@ export function useBlockModals({
   const [tabModal, setTabModal] = React.useState<TabModalState | null>(null);
   const [progModal, setProgModal] =
     React.useState<ProgressionModalState | null>(null);
+  const [scaleModal, setScaleModal] =
+    React.useState<ScaleModalState | null>(null);
 
   function openInsertChord(pos: number) {
     closeContextMenu();
@@ -92,6 +102,19 @@ export function useBlockModals({
       bars: String(DEFAULT_PROG_BARS),
       chords: ["I", "V", "vi", "IV"],
       chordInput: "",
+    });
+  }
+
+  function openInsertScale(pos: number) {
+    closeContextMenu();
+    setScaleModal({
+      mode: "insert",
+      pos,
+      root: DEFAULT_SCALE_ROOT,
+      type: DEFAULT_SCALE_TYPE,
+      positions: [1],
+      positionInput: "",
+      showIntervals: false,
     });
   }
 
@@ -160,6 +183,23 @@ export function useBlockModals({
           : String(DEFAULT_PROG_BARS),
       chords: prog.data.chords ?? [],
       chordInput: "",
+    });
+  }
+
+  function openEditScale(pos: number) {
+    closeContextMenu();
+    const scale = findScaleBlockAtPos(draft, pos);
+    if (!scale) return;
+
+    setScaleModal({
+      mode: "edit",
+      pos,
+      range: { start: scale.start, end: scale.end },
+      root: scale.data.root ?? DEFAULT_SCALE_ROOT,
+      type: scale.data.type ?? DEFAULT_SCALE_TYPE,
+      positions: normalizePositions(scale.data.positions),
+      positionInput: "",
+      showIntervals: Boolean(scale.data.showIntervals),
     });
   }
 
@@ -276,6 +316,38 @@ export function useBlockModals({
     });
   }
 
+  function applyScaleModal() {
+    if (!scaleModal) return;
+
+    const block = serializeScaleBlock({
+      root: scaleModal.root.trim() || DEFAULT_SCALE_ROOT,
+      type: scaleModal.type.trim() || DEFAULT_SCALE_TYPE,
+      positions: normalizePositions(scaleModal.positions),
+      showIntervals: scaleModal.showIntervals,
+    });
+
+    setDraft((prev) => {
+      if (scaleModal.mode === "insert") {
+        return insertAtPos(prev, scaleModal.pos, block);
+      }
+      if (!scaleModal.range) return prev;
+      return replaceRange(
+        prev,
+        scaleModal.range.start,
+        scaleModal.range.end,
+        block,
+      );
+    });
+
+    setDirty(true);
+    setScaleModal(null);
+
+    requestAnimationFrame(() => {
+      taRef.current?.focus();
+    });
+  }
+
+
   return {
     chordModal,
     setChordModal,
@@ -283,14 +355,19 @@ export function useBlockModals({
     setTabModal,
     progModal,
     setProgModal,
+    scaleModal,
+    setScaleModal,
     openInsertChord,
     openInsertTab,
     openInsertProgression,
+    openInsertScale,
     openEditChord,
     openEditTab,
     openEditProgression,
+    openEditScale,
     applyChordModal,
     applyTabModal,
     applyProgModal,
+    applyScaleModal,
   };
 }

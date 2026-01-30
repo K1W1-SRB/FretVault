@@ -6,6 +6,7 @@ type NoteEditorToolbarProps = {
   onInsertCodeBlock: () => void;
   onInsertLink: () => void;
   onInsertChordBlock: () => void;
+  onInsertScaleBlock: () => void;
   onInsertTabBlock: () => void;
   onInsertProgressionBlock: () => void;
   onInsertPracticeBlock: () => void;
@@ -17,6 +18,7 @@ export function NoteEditorToolbar({
   onInsertCodeBlock,
   onInsertLink,
   onInsertChordBlock,
+  onInsertScaleBlock,
   onInsertTabBlock,
   onInsertProgressionBlock,
   onInsertPracticeBlock,
@@ -113,6 +115,9 @@ export function NoteEditorToolbar({
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" onClick={onInsertChordBlock}>
           Chord block
+        </Button>
+        <Button type="button" size="sm" onClick={onInsertScaleBlock}>
+          Scale block
         </Button>
         <Button type="button" size="sm" onClick={onInsertTabBlock}>
           Tab block

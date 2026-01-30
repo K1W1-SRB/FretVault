@@ -17,17 +17,16 @@ import { NoteEditorLinkSuggestions } from "../note-editor/components/note-editor
 import { NoteEditorToolbar } from "../note-editor/components/note-editor-toolbar";
 import { PracticeModal } from "../note-editor/components/practice-modal";
 import { ProgressionModal } from "../note-editor/components/progression-modal";
+import { ScaleModal } from "../note-editor/components/scale-modal";
 import { TabModal } from "../note-editor/components/tab-modal";
 import { createMdComponents } from "../note-editor/utils/markdown-components";
 import {
   extractInternalLinkSlugs,
   remarkInternalLinks,
 } from "../note-editor/utils/internal-links";
-import {
-  normalizeMd,
-  replaceRange,
-} from "../note-editor/utils/markdown";
+import { normalizeMd, replaceRange } from "../note-editor/utils/markdown";
 import { findChordBlockAtPos } from "../note-editor/blocks/chords";
+import { findScaleBlockAtPos } from "../note-editor/blocks/scale";
 import { findTabBlockAtPos } from "../note-editor/blocks/tab";
 import { findProgressionBlockAtPos } from "../note-editor/blocks/progression";
 import { findPracticeBlockAtPos } from "../note-editor/blocks/practice";
@@ -35,9 +34,7 @@ import { fetchPracticePlans } from "../note-editor/blocks/practice/sync";
 import { useLinkSuggestions } from "../note-editor/hooks/use-link-suggestions";
 import { useBlockModals } from "../note-editor/hooks/use-block-modals";
 import { usePracticeModal } from "../note-editor/hooks/use-practice-modal";
-import type {
-  ContextMenuState,
-} from "../note-editor/types";
+import type { ContextMenuState } from "../note-editor/types";
 
 export function NoteEditor({
   activeSlug,
@@ -77,15 +74,20 @@ export function NoteEditor({
     setTabModal,
     progModal,
     setProgModal,
+    scaleModal,
+    setScaleModal,
     openInsertChord,
     openInsertTab,
     openInsertProgression,
+    openInsertScale,
     openEditChord,
     openEditTab,
     openEditProgression,
+    openEditScale,
     applyChordModal,
     applyTabModal,
     applyProgModal,
+    applyScaleModal,
   } = useBlockModals({
     draft,
     setDraft,
@@ -298,6 +300,7 @@ export function NoteEditor({
 
     const pos = el.selectionStart ?? 0;
     const chord = findChordBlockAtPos(draft, pos);
+    const scale = findScaleBlockAtPos(draft, pos);
     const tab = findTabBlockAtPos(draft, pos);
     const prog = findProgressionBlockAtPos(draft, pos);
     const practice = findPracticeBlockAtPos(draft, pos);
@@ -307,6 +310,7 @@ export function NoteEditor({
       y: e.clientY,
       pos,
       hasChordBlock: !!chord,
+      hasScaleBlock: !!scale,
       hasTabBlock: !!tab,
       hasProgBlock: !!prog,
       hasPracticeBlock: !!practice,
@@ -394,8 +398,6 @@ export function NoteEditor({
     openInsertProgression(pos);
   }
 
-
-
   if (!activeSlug) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -454,6 +456,9 @@ export function NoteEditor({
                 onInsertLink={insertLink}
                 onInsertChordBlock={() =>
                   openInsertChord(taRef.current?.selectionStart ?? 0)
+                }
+                onInsertScaleBlock={() =>
+                  openInsertScale(taRef.current?.selectionStart ?? 0)
                 }
                 onInsertTabBlock={() =>
                   openInsertTab(taRef.current?.selectionStart ?? 0)
@@ -532,6 +537,8 @@ export function NoteEditor({
                 menu={menu}
                 onInsertChord={openInsertChord}
                 onEditChord={openEditChord}
+                onInsertScale={openInsertScale}
+                onEditScale={openEditScale}
                 onInsertTab={openInsertTab}
                 onEditTab={openEditTab}
                 onInsertProgression={openInsertProgression}
@@ -542,10 +549,7 @@ export function NoteEditor({
             )}
           </TabsContent>
 
-          <TabsContent
-            value="preview"
-            className="m-0 flex-1 overflow-auto p-4"
-          >
+          <TabsContent value="preview" className="m-0 flex-1 overflow-auto p-4">
             <div className="prose max-w-none" ref={previewRef}>
               <ReactMarkdown
                 components={mdComponents}
@@ -582,6 +586,15 @@ export function NoteEditor({
           onChange={setProgModal}
           onClose={() => setProgModal(null)}
           onApply={applyProgModal}
+        />
+      )}
+
+      {scaleModal && (
+        <ScaleModal
+          value={scaleModal}
+          onChange={setScaleModal}
+          onClose={() => setScaleModal(null)}
+          onApply={applyScaleModal}
         />
       )}
 

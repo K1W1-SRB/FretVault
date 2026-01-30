@@ -18,6 +18,7 @@ export type ContextMenuState = {
   hasTabBlock: boolean;
   hasProgBlock: boolean;
   hasPracticeBlock: boolean;
+  hasScaleBlock: boolean;
 };
 
 export type ChordModalState = {
@@ -52,6 +53,18 @@ export type ProgressionModalState = {
   chords: string[];
   chordInput: string;
 };
+
+export type ScaleModalState = {
+  mode: "insert" | "edit";
+  pos: number;
+  range?: { start: number; end: number };
+  root: string;
+  type: string;
+  positions: number[];
+  positionInput: string;
+  showIntervals: boolean;
+};
+
 
 export type PracticeModalState = {
   mode: "insert" | "edit";

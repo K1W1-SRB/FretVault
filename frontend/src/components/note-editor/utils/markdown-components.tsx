@@ -1,5 +1,6 @@
 import * as React from "react";
 import { ChordBlockPreview, parseBlockPayload } from "../blocks/chords";
+import { parseScaleBlockBody, ScaleBlockPreview } from "../blocks/scale";
 import { TabBlockPreview, parseTabBlockBody } from "../blocks/tab";
 import {
   parseProgressionBlockBody,
@@ -90,6 +91,10 @@ export function createMdComponents({
       if (lang === "chord") {
         const data = parseBlockPayload(raw);
         return <ChordBlockPreview data={data} />;
+      }
+      if (lang === "scale") {
+        const data = parseScaleBlockBody(raw);
+        return <ScaleBlockPreview data={data} />;
       }
       if (lang === "tab") {
         const data = parseTabBlockBody(raw);
