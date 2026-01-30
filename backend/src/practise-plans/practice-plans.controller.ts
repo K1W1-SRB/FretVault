@@ -9,8 +9,6 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { PrismaService } from 'prisma/prisma.service';
-import { AuthService } from 'src/auth/auth.service';
 import { CreatePracticePlanDto } from './dto/create-practice-plan.dto';
 import { PracticePlan } from '@prisma/client';
 export type PracticePlanType = PracticePlan;

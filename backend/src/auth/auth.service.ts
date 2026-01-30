@@ -9,7 +9,7 @@ import { PrismaService } from 'prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { RegisterDto } from './dto/register.dto';
 import { AuthUser } from './types/auth-user.type';
-import { AccountType } from '@prisma/client';
+import { AccountType, User } from '@prisma/client';
 import { WorkspacesService } from 'src/workspace/workspace.service';
 
 @Injectable()
@@ -20,7 +20,7 @@ export class AuthService {
     private readonly workspacesService: WorkspacesService,
   ) {}
 
-  private toAuthUser(user: any): AuthUser {
+  private toAuthUser(user: User): AuthUser {
     const { id, email, name, avatar, accountType } = user;
     return { id, email, name, avatar, accountType };
   }

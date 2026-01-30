@@ -24,36 +24,32 @@ import { WorkspaceSwitcher } from "../workspace-switcher";
 
 type GroupMode = "tag" | "flat";
 
-function getTagLabel(tag: unknown): string | null {
-  if (!tag) return null;
-  if (typeof tag === "string") return tag.trim() || null;
-
-  if (typeof tag === "object") {
-    const t = tag as Record<string, unknown>;
-
-    const nestedTag =
-      t.tag && typeof t.tag === "object"
-        ? (t.tag as Record<string, unknown>)
-        : null;
-
-    const candidate =
-      (typeof nestedTag?.name === "string" && (nestedTag.name as string)) ||
-      (typeof t.name === "string" && t.name) ||
-      (typeof t.label === "string" && t.label) ||
-      (typeof t.title === "string" && t.title) ||
-      (typeof t.value === "string" && t.value);
-
-    return candidate ? candidate.trim() || null : null;
-  }
-
-  return null;
-}
-
 function getAllTagLabels(note: NoteListItem): string[] {
-  const rawTags = (note as any).tags;
+  const rawTags = note.tags;
   if (!Array.isArray(rawTags)) return [];
 
-  const labels = rawTags.map(getTagLabel).filter((x): x is string => !!x);
+  const labels = rawTags
+    .map((t) => {
+      if (typeof t === "string") return t.trim();
+      if (t && typeof t === "object") {
+        const obj = t as Record<string, unknown>;
+        const nestedTag =
+          obj.tag && typeof obj.tag === "object"
+            ? (obj.tag as Record<string, unknown>)
+            : null;
+
+        const v =
+          (typeof nestedTag?.name === "string" &&
+            (nestedTag.name as string)) ||
+          (typeof obj.name === "string" && (obj.name as string)) ||
+          (typeof obj.label === "string" && (obj.label as string)) ||
+          (typeof obj.title === "string" && (obj.title as string)) ||
+          (typeof obj.value === "string" && (obj.value as string));
+        return typeof v === "string" ? v.trim() : "";
+      }
+      return "";
+    })
+    .filter(Boolean);
 
   const seen = new Set<string>();
   const out: string[] = [];

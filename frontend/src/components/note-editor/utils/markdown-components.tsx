@@ -12,6 +12,25 @@ import {
 } from "../blocks/practice";
 import { InternalLink, ResolvedInternalLink } from "./internal-link";
 
+type HeadingProps = React.HTMLAttributes<HTMLHeadingElement> & {
+  children?: React.ReactNode;
+  node?: unknown;
+};
+type ParagraphProps = React.HTMLAttributes<HTMLParagraphElement> & {
+  children?: React.ReactNode;
+  node?: unknown;
+};
+type AnchorProps = React.AnchorHTMLAttributes<HTMLAnchorElement> & {
+  children?: React.ReactNode;
+  node?: unknown;
+};
+type CodeProps = React.HTMLAttributes<HTMLElement> & {
+  inline?: boolean;
+  className?: string;
+  children?: React.ReactNode;
+  node?: unknown;
+};
+
 export function createMdComponents({
   onInternalNavigate,
   internalLinks,
@@ -27,22 +46,22 @@ export function createMdComponents({
     !href.startsWith("#");
 
   return {
-    h1: ({ children, ...props }: any) => (
+    h1: ({ children, node: _node, ...props }: HeadingProps) => (
       <h1 {...props} className="mb-4 text-3xl font-bold">
         {children}
       </h1>
     ),
-    h2: ({ children, ...props }: any) => (
+    h2: ({ children, node: _node, ...props }: HeadingProps) => (
       <h2 {...props} className="mb-3 text-2xl font-semibold">
         {children}
       </h2>
     ),
-    p: ({ children, ...props }: any) => (
+    p: ({ children, node: _node, ...props }: ParagraphProps) => (
       <p {...props} className="mb-3 leading-7">
         {children}
       </p>
     ),
-    a: ({ href, children, ...props }: any) => {
+    a: ({ href, children, node: _node, ...props }: AnchorProps) => {
       if (typeof href === "string") {
         if (href.startsWith("internal:")) {
           const slug = href.slice("internal:".length);
@@ -76,7 +95,7 @@ export function createMdComponents({
         </a>
       );
     },
-    code: ({ inline, className, children, ...props }: any) => {
+    code: ({ inline, className, children, node: _node, ...props }: CodeProps) => {
       if (inline) {
         return (
           <code {...props} className="rounded bg-muted px-1 py-0.5">

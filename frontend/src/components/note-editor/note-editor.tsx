@@ -149,18 +149,6 @@ export function NoteEditor({
     notes: notesListQuery.data ?? [],
   });
 
-  React.useEffect(() => {
-    if (noteQuery.data) {
-      setDraft(normalizeMd(noteQuery.data.contentMd ?? ""));
-      setDirty(false);
-      return;
-    }
-    if (selectedWorkspaceId || activeSlug) {
-      setDraft("");
-      setDirty(false);
-    }
-  }, [noteQuery.data?.id, selectedWorkspaceId, activeSlug]);
-
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!selectedWorkspaceId) return;
@@ -202,6 +190,21 @@ export function NoteEditor({
     },
   });
 
+  const noteData = noteQuery.data;
+  const { mutate: createNote, isPending: isCreatingNote } = createNoteMutation;
+
+  React.useEffect(() => {
+    if (noteData) {
+      setDraft(normalizeMd(noteData.contentMd ?? ""));
+      setDirty(false);
+      return;
+    }
+    if (selectedWorkspaceId || activeSlug) {
+      setDraft("");
+      setDirty(false);
+    }
+  }, [noteData, selectedWorkspaceId, activeSlug]);
+
   const internalLinkSlugs = React.useMemo(
     () => extractInternalLinkSlugs(normalizedDraft),
     [normalizedDraft],
@@ -220,22 +223,22 @@ export function NoteEditor({
     () =>
       createMdComponents({
         onInternalNavigate: (slug) => {
-          if (resolveLinksQuery.isSuccess && internalLinks?.[slug] === null) {
-            if (!createNoteMutation.isPending) {
-              createNoteMutation.mutate(slug);
+            if (resolveLinksQuery.isSuccess && internalLinks?.[slug] === null) {
+              if (!isCreatingNote) {
+                createNote(slug);
+              }
+              return;
             }
-            return;
-          }
-          onNavigateSlug?.(slug);
-        },
+            onNavigateSlug?.(slug);
+          },
         internalLinks,
       }),
     [
       internalLinks,
       onNavigateSlug,
       resolveLinksQuery.isSuccess,
-      createNoteMutation.isPending,
-      createNoteMutation.mutate,
+      isCreatingNote,
+      createNote,
     ],
   );
 
@@ -272,8 +275,8 @@ export function NoteEditor({
           ? rawHref
           : textSlug!;
       if (resolveLinksQuery.isSuccess && internalLinks?.[slug] === null) {
-        if (!createNoteMutation.isPending) {
-          createNoteMutation.mutate(slug);
+        if (!isCreatingNote) {
+          createNote(slug);
         }
         return;
       }
@@ -288,8 +291,8 @@ export function NoteEditor({
     onNavigateSlug,
     resolveLinksQuery.isSuccess,
     internalLinks,
-    createNoteMutation.isPending,
-    createNoteMutation.mutate,
+    isCreatingNote,
+    createNote,
   ]);
 
   function openContextMenu(e: React.MouseEvent) {
@@ -471,7 +474,7 @@ export function NoteEditor({
 
               <div className="relative flex-1 overflow-hidden">
                 <Textarea
-                  ref={taRef as any}
+                  ref={taRef}
                   value={draft}
                   onChange={(e) => {
                     const next = e.target.value;

@@ -13,7 +13,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { UserSafeDto } from './dto/user-safe.dto';
 import { JwtAuthGuard } from './jwt-auth.guards';
-import * as authenticatedRequestType from './types/authenticated-request.type';
+import type { AuthenticatedRequest } from './types/authenticated-request.type';
 
 @Controller('auth')
 export class AuthController {
@@ -39,9 +39,7 @@ export class AuthController {
   }
 
   @Post('logout')
-  async logout(
-    @Res({ passthrough: true }) res: express.Response,
-  ): Promise<{ ok: true }> {
+  logout(@Res({ passthrough: true }) res: express.Response): { ok: true } {
     res.clearCookie('access_token', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -53,9 +51,7 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  async me(
-    @Req() req: authenticatedRequestType.AuthenticatedRequest,
-  ): Promise<UserSafeDto> {
+  me(@Req() req: AuthenticatedRequest): UserSafeDto {
     return req.user;
   }
 }

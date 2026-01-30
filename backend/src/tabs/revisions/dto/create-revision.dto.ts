@@ -1,4 +1,5 @@
 import { IsInt, IsOptional, IsString, IsObject } from 'class-validator';
+import { Prisma } from '@prisma/client';
 
 export class CreateRevisionDto {
   @IsInt()
@@ -9,5 +10,5 @@ export class CreateRevisionDto {
   message?: string;
 
   @IsObject()
-  score: any; // canonical tab JSON from your editor
+  score: Prisma.InputJsonValue; // canonical tab JSON from your editor
 }

@@ -17,7 +17,7 @@ import {
 import { notesApi } from "@/lib/notes-api";
 import { useSelectedWorkspace } from "@/hooks/selected-workspace-provider";
 
-function normalizeTags(raw: any): string[] {
+function normalizeTags(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
   return raw
     .map((t) => {
@@ -66,14 +66,14 @@ export function NoteTopbar({
   const [tagsDirty, setTagsDirty] = React.useState(false);
 
   React.useEffect(() => {
-    if (!noteQuery.data) {
+    if (!note) {
       setTagsDraft([]);
       setTagsDirty(false);
       return;
     }
-    setTagsDraft(normalizeTags((noteQuery.data as any).tags));
+    setTagsDraft(normalizeTags(note.tags));
     setTagsDirty(false);
-  }, [noteQuery.data?.id]);
+  }, [note]);
 
   const saveTagsMutation = useMutation({
     mutationFn: async () => {
@@ -81,7 +81,7 @@ export function NoteTopbar({
       if (!noteQuery.data) return;
       return notesApi.update(selectedWorkspaceId, noteQuery.data.id, {
         tags: tagsDraft,
-      } as any);
+      });
     },
     onSuccess: async (updated) => {
       if (!updated) return;

@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { AddMemberDto } from './dto/add-member.dto';
-import { AccountType, WorkspaceRole, WorkspaceType } from '@prisma/client';
+import { AccountType, WorkspaceRole, Prisma } from '@prisma/client';
 import { PrismaService } from 'prisma/prisma.service';
 
 @Injectable()
@@ -141,8 +141,11 @@ export class WorkspacesService {
           createdAt: true,
         },
       });
-    } catch (e: any) {
-      if (e?.code === 'P2002')
+    } catch (e: unknown) {
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === 'P2002'
+      )
         throw new ConflictException('Workspace slug already exists');
       throw e;
     }
@@ -179,8 +182,11 @@ export class WorkspacesService {
           user: { select: { id: true, email: true, name: true, avatar: true } },
         },
       });
-    } catch (e: any) {
-      if (e?.code === 'P2002')
+    } catch (e: unknown) {
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === 'P2002'
+      )
         throw new ConflictException('User is already a member');
       throw e;
     }

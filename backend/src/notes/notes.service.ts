@@ -56,7 +56,7 @@ export class NotesService {
 
   private parseBlockPayload(body: string) {
     // super simple "key: value" parser; enough for v1
-    const obj: Record<string, any> = {};
+    const obj: Record<string, string> = {};
     for (const line of body.split('\n')) {
       const trimmed = line.trim();
       if (!trimmed || trimmed.startsWith('#')) continue;
@@ -72,8 +72,11 @@ export class NotesService {
   private extractNoteBlocks(markdown: string) {
     const re = /^```(chord|prog)[ \t]*\r?\n([\s\S]*?)^```[ \t]*$/gm;
 
-    const blocks: Array<{ type: 'chord' | 'prog'; data: any; order: number }> =
-      [];
+    const blocks: Array<{
+      type: 'chord' | 'prog';
+      data: Record<string, string>;
+      order: number;
+    }> = [];
     let match: RegExpExecArray | null;
     let order = 0;
 

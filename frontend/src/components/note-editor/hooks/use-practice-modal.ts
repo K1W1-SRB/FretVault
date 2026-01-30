@@ -154,12 +154,15 @@ export function usePracticeModal({
             : minutesToDuration(totalMinutes),
         };
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       const message =
-        typeof err?.message === "string"
-          ? err.message
-          : "Failed to load plan items";
-      toast.error(message);
+        err &&
+        typeof err === "object" &&
+        "message" in err &&
+        typeof (err as { message?: unknown }).message === "string"
+          ? (err as { message: string }).message
+          : "";
+      toast.error(message || "Failed to load plan items");
     } finally {
       setPracticePlanLoading(false);
     }
@@ -294,12 +297,15 @@ export function usePracticeModal({
       requestAnimationFrame(() => {
         taRef.current?.focus();
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       const message =
-        typeof err?.message === "string"
-          ? err.message
-          : "Failed to sync practice plan";
-      toast.error(message);
+        err &&
+        typeof err === "object" &&
+        "message" in err &&
+        typeof (err as { message?: unknown }).message === "string"
+          ? (err as { message: string }).message
+          : "";
+      toast.error(message || "Failed to sync practice plan");
     } finally {
       setPracticeSyncing(false);
     }

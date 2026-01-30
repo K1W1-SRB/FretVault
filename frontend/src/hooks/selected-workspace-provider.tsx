@@ -2,14 +2,15 @@
 
 import * as React from "react";
 import { useWorkspaceMe } from "@/lib/workspace-me";
+import type { WorkspaceMembership } from "@/lib/notes-api";
 
 const LS_KEY = "fretvault:selectedWorkspaceId";
 
 type SelectedWorkspaceCtx = {
   workspacesQuery: ReturnType<typeof useWorkspaceMe>;
-  memberships: any[];
+  memberships: WorkspaceMembership[];
   selectedWorkspaceId: string | null;
-  selectedMembership: any | null;
+  selectedMembership: WorkspaceMembership | null;
   setWorkspaceId: (id: string) => void;
 };
 
@@ -39,7 +40,10 @@ export function SelectedWorkspaceProvider({
   children: React.ReactNode;
 }) {
   const workspacesQuery = useWorkspaceMe();
-  const memberships = workspacesQuery.data ?? [];
+  const memberships = React.useMemo<WorkspaceMembership[]>(
+    () => workspacesQuery.data ?? [],
+    [workspacesQuery.data],
+  );
 
   // ✅ shared, single state instance for the whole subtree
   const [selectedId, setSelectedId] = React.useState<string | null>(() =>
@@ -52,7 +56,7 @@ export function SelectedWorkspaceProvider({
 
     if (
       selectedId &&
-      memberships.some((m: any) => m.workspace.id === selectedId)
+      memberships.some((m) => m.workspace.id === selectedId)
     ) {
       return;
     }
@@ -68,7 +72,7 @@ export function SelectedWorkspaceProvider({
   }, []);
 
   const selectedMembership =
-    memberships.find((m: any) => m.workspace.id === selectedId) ?? null;
+    memberships.find((m) => m.workspace.id === selectedId) ?? null;
 
   const value: SelectedWorkspaceCtx = React.useMemo(
     () => ({

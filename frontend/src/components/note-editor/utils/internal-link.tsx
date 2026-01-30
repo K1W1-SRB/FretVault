@@ -18,11 +18,10 @@ export function InternalLink({
   onNavigate?: (slug: string) => void;
   children?: React.ReactNode;
 }) {
+  const targetSlug = resolvedNote?.slug ?? slug;
   const isResolved = !!resolvedNote;
   const isMissing = resolvedNote === null;
-  const isPending = !isResolved && !isMissing;
-  const canNavigate = Boolean(targetSlug);
-  const targetSlug = resolvedNote?.slug ?? slug;
+  const canNavigate = !isMissing;
   const label = children ?? slug;
   const title = isResolved
     ? resolvedNote?.title || resolvedNote?.slug

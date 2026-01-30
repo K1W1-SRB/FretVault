@@ -1,7 +1,7 @@
 import { FingerValue, StringValue } from "./types";
 
 export function parseBlockPayload(body: string) {
-  const obj: Record<string, any> = {};
+  const obj: Record<string, string> = {};
   for (const line of body.split("\n")) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("#")) continue;

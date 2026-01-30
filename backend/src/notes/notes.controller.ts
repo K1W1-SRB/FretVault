@@ -7,7 +7,6 @@ import {
   Patch,
   Post,
   Query,
-  Req,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
@@ -16,6 +15,7 @@ import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
 import { ListNotesQuery } from './dto/list-notes.query';
 import { ResolveLinksDto } from './dto/resolve-links.dto';
+import { User } from 'src/auth/user.decorator';
 
 @UseGuards(AuthGuard('jwt'))
 @Controller('workspaces/:workspaceId/notes')
@@ -24,65 +24,65 @@ export class NotesController {
 
   @Post()
   create(
-    @Req() req: any,
+    @User('id') userId: number,
     @Param('workspaceId') workspaceId: string,
     @Body() dto: CreateNoteDto,
   ) {
-    return this.notes.create(workspaceId, req.user.id, dto);
+    return this.notes.create(workspaceId, userId, dto);
   }
 
   @Get()
   findAll(
-    @Req() req: any,
+    @User('id') userId: number,
     @Param('workspaceId') workspaceId: string,
     @Query() query: ListNotesQuery,
   ) {
-    return this.notes.findAll(workspaceId, req.user.id, query);
+    return this.notes.findAll(workspaceId, userId, query);
   }
 
   @Get('by-slug/:slug')
   findBySlug(
-    @Req() req: any,
+    @User('id') userId: number,
     @Param('workspaceId') workspaceId: string,
     @Param('slug') slug: string,
   ) {
-    return this.notes.findBySlug(workspaceId, slug, req.user.id);
+    return this.notes.findBySlug(workspaceId, slug, userId);
   }
 
   @Post('resolve-links')
   resolveLinks(
-    @Req() req: any,
+    @User('id') userId: number,
     @Param('workspaceId') workspaceId: string,
     @Body() dto: ResolveLinksDto,
   ) {
-    return this.notes.resolveLinks(workspaceId, req.user.id, dto);
+    return this.notes.resolveLinks(workspaceId, userId, dto);
   }
 
   @Get(':noteId')
   findOne(
-    @Req() req: any,
+    @User('id') userId: number,
     @Param('workspaceId') workspaceId: string,
     @Param('noteId') noteId: string,
   ) {
-    return this.notes.findOne(workspaceId, noteId, req.user.id);
+    return this.notes.findOne(workspaceId, noteId, userId);
   }
 
   @Patch(':noteId')
   update(
-    @Req() req: any,
+    @User('id') userId: number,
     @Param('workspaceId') workspaceId: string,
     @Param('noteId') noteId: string,
     @Body() dto: UpdateNoteDto,
   ) {
-    return this.notes.update(workspaceId, noteId, req.user.id, dto);
+    return this.notes.update(workspaceId, noteId, userId, dto);
   }
 
   @Delete(':noteId')
   remove(
-    @Req() req: any,
+    @User('id') userId: number,
     @Param('workspaceId') workspaceId: string,
     @Param('noteId') noteId: string,
   ) {
-    return this.notes.remove(workspaceId, noteId, req.user.id);
+    return this.notes.remove(workspaceId, noteId, userId);
   }
 }

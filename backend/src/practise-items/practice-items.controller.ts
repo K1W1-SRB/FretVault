@@ -10,7 +10,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { CreatePracticeItemDto } from './dto/create-practice-item.dto';
-import { User } from 'src/auth/user.decorator';
 import { PracticeItemsService } from './practice-items.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guards';
 import { UpdatePracticeItemDto } from './dto/update-practice-item.dto';

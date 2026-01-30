@@ -14,7 +14,14 @@ function slugifyChord(name: string) {
     .replace(/(^-|-$)+/g, "");
 }
 
-export function ChordBlockPreview({ data }: { data: any }) {
+type ChordBlockPayload = {
+  name?: string;
+  strings?: string;
+  fingers?: string;
+  shape?: string;
+};
+
+export function ChordBlockPreview({ data }: { data: ChordBlockPayload }) {
   const name = data.name ?? "Unnamed chord";
   const anchor = slugifyChord(name);
 

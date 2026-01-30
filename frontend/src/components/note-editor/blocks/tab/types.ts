@@ -16,14 +16,15 @@ export function toNumber(v: unknown): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
-export function normalizeTabData(data: any): TabBlockData {
+export function normalizeTabData(data: unknown): TabBlockData {
+  const obj = data && typeof data === "object" ? (data as Record<string, unknown>) : null;
   return {
-    name: typeof data?.name === "string" ? data.name : undefined,
-    tuning: typeof data?.tuning === "string" ? data.tuning : undefined,
-    time: typeof data?.time === "string" ? data.time : undefined,
-    bpm: toNumber(data?.bpm),
-    capo: toNumber(data?.capo),
-    columns: toNumber(data?.columns),
-    tab: typeof data?.tab === "string" ? data.tab : undefined,
+    name: typeof obj?.name === "string" ? obj.name : undefined,
+    tuning: typeof obj?.tuning === "string" ? obj.tuning : undefined,
+    time: typeof obj?.time === "string" ? obj.time : undefined,
+    bpm: toNumber(obj?.bpm),
+    capo: toNumber(obj?.capo),
+    columns: toNumber(obj?.columns),
+    tab: typeof obj?.tab === "string" ? obj.tab : undefined,
   };
 }

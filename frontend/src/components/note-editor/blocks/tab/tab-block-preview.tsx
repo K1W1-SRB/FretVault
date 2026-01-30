@@ -3,7 +3,7 @@ import * as React from "react";
 import { TabDiagram } from "./tab-diagram";
 import { normalizeTabData } from "./types";
 
-export function TabBlockPreview({ data }: { data: any }) {
+export function TabBlockPreview({ data }: { data: unknown }) {
   const normalized = React.useMemo(() => normalizeTabData(data), [data]);
 
   return (
