@@ -1,0 +1,19 @@
+{
+  "name": "fretvault",
+  "private": true,
+  "packageManager": "yarn@4.3.1",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "start": "turbo run start"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.6"
+  }
+}

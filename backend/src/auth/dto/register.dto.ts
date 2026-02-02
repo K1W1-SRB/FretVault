@@ -1,3 +1,4 @@
+import { AccountType } from '@prisma/client';
 import { IsEmail, IsString, MinLength } from 'class-validator';
 
 export class RegisterDto {
@@ -10,7 +11,7 @@ export class RegisterDto {
   @IsString()
   avatar: string;
   @IsString()
-  accountType: string;
+  accountType: AccountType;
 
   @IsString()
   @MinLength(8)

@@ -23,6 +23,7 @@ export class CreatePracticeItemDto {
   @IsString()
   description?: string;
 
+  @IsOptional()
   @IsInt()
   @IsPositive()
   planId: number;

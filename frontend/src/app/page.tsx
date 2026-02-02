@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { ArrowRight, Music, BarChart3, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 export default function LandingPage() {
   const router = useRouter();
@@ -74,10 +75,13 @@ export default function LandingPage() {
           transition={{ duration: 0.8 }}
           className="mt-12 md:mt-0"
         >
-          <img
+          <Image
             src="/images/guitar-hero-illustration.png"
             alt="Guitar Practice"
+            width={480}
+            height={320}
             className="w-[480px] rounded-2xl shadow-lg"
+            priority
           />
         </motion.div>
       </section>

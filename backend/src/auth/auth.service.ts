@@ -1,38 +1,51 @@
 // auth.service.ts
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { RegisterDto } from './dto/register.dto';
 import { AuthUser } from './types/auth-user.type';
+import { AccountType, User } from '@prisma/client';
+import { WorkspacesService } from 'src/workspace/workspace.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
+    private readonly workspacesService: WorkspacesService,
   ) {}
 
-  private toAuthUser(user: any): AuthUser {
+  private toAuthUser(user: User): AuthUser {
     const { id, email, name, avatar, accountType } = user;
     return { id, email, name, avatar, accountType };
   }
 
   async validateUser(email: string, pass: string): Promise<AuthUser> {
-    const user = await this.prisma.user.findUnique({ where: { email } });
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
     if (user && (await bcrypt.compare(pass, user.password))) {
       return this.toAuthUser(user);
     }
+
     throw new UnauthorizedException('Invalid credentials');
   }
 
-  // NEW: central place to create the access token + cookie settings
+  // central place to create the access token + cookie settings
   issueAccessToken(user: AuthUser) {
     const payload = { email: user.email, sub: user.id };
     const accessToken = this.jwtService.sign(payload); // expiresIn is set in JwtModule
     const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // set true on HTTPS
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax' as const,
       path: '/',
       maxAge: 60 * 60 * 1000, // 1 hour
@@ -41,13 +54,31 @@ export class AuthService {
   }
 
   async register(dto: RegisterDto): Promise<AuthUser> {
-    const { email, password, name, accountType, avatar } = dto;
+    const email = dto.email.toLowerCase().trim();
+    const name = dto.name.trim();
+    const avatar = dto.avatar;
+    const accountType = dto.accountType ?? AccountType.SOLO;
+
+    // Optional but smart: fail fast with a clean error
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      throw new ConflictException('Email already in use');
+    }
+
     const salt = await bcrypt.genSalt();
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const hashedPassword = await bcrypt.hash(dto.password, salt);
 
     const user = await this.prisma.user.create({
-      data: { email, name, accountType, avatar, password: hashedPassword },
+      data: {
+        email,
+        name,
+        accountType,
+        avatar,
+        password: hashedPassword,
+      },
     });
+
+    await this.workspacesService.ensurePersonalWorkspace(user.id);
 
     return this.toAuthUser(user);
   }

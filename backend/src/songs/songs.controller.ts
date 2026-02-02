@@ -12,7 +12,6 @@ import {
 import { SongsService } from './songs.service';
 import { CreateSongDto } from './dto/create-song.dto';
 import { UpdateSongDto } from './dto/update-song.dto';
-import { SongType } from './types/song.type';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guards';
 import { User } from 'src/auth/user.decorator';
 

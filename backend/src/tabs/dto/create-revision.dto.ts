@@ -1,4 +1,5 @@
 import { IsString, IsOptional, IsInt, IsJSON } from 'class-validator';
+import { Prisma } from '@prisma/client';
 
 export class CreateRevisionDto {
   @IsInt()
@@ -9,5 +10,5 @@ export class CreateRevisionDto {
   message?: string;
 
   @IsJSON()
-  score: any;
+  score: Prisma.InputJsonValue;
 }
