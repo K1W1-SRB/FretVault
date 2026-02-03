@@ -86,7 +86,7 @@ function scoreToGrid(score: Score): {
   if (!m) {
     return {
       grid: Array.from({ length: strings.length }, () =>
-        Array.from({ length: 16 }, () => null)
+        Array.from({ length: 16 }, () => null),
       ),
       columns: 16,
       strings,
@@ -100,7 +100,7 @@ function scoreToGrid(score: Score): {
   }
   const columns = Math.max(maxCol + 1, colsPerMeasure);
   const grid: Grid = Array.from({ length: strings.length }, () =>
-    Array.from({ length: columns }, () => null)
+    Array.from({ length: columns }, () => null),
   );
 
   for (const e of m.events) {
@@ -120,7 +120,7 @@ function gridToScore(
   grid: Grid,
   strings: string[],
   tempo: number | null,
-  sig: [number, number] | null
+  sig: [number, number] | null,
 ): Score {
   const rows = grid.length;
   const columns = grid[0]?.length ?? 0;
@@ -196,12 +196,12 @@ export default function TabViewPage() {
   ]);
   const [columns, setColumns] = useState<number>(32);
   const [grid, setGrid] = useState<Grid>(() =>
-    Array.from({ length: 6 }, () => Array.from({ length: 32 }, () => null))
+    Array.from({ length: 6 }, () => Array.from({ length: 32 }, () => null)),
   );
 
   const tempo = useMemo(
     () => latest?.score?.tempo ?? tab?.tempo ?? null,
-    [latest, tab]
+    [latest, tab],
   );
   const timeSigTuple = useMemo<[number, number] | null>(() => {
     if (latest?.score?.timeSignature)
@@ -222,7 +222,7 @@ export default function TabViewPage() {
           }),
           fetch(
             `${process.env.NEXT_PUBLIC_BACKEND_API}/tab-revisions/tab/${tabId}`,
-            { credentials: "include" }
+            { credentials: "include" },
           ),
         ]);
         if (!tabRes.ok) throw new Error("Failed to fetch tab");
@@ -252,8 +252,8 @@ export default function TabViewPage() {
           setColumns(32);
           setGrid(
             Array.from({ length: s.length }, () =>
-              Array.from({ length: 32 }, () => null)
-            )
+              Array.from({ length: 32 }, () => null),
+            ),
           );
         }
       } catch (e) {
@@ -274,7 +274,7 @@ export default function TabViewPage() {
 
   const ascii = useMemo(
     () => gridToAscii(grid, strings, columns),
-    [grid, strings, columns]
+    [grid, strings, columns],
   );
 
   const FRET_CYCLE = [
@@ -328,7 +328,7 @@ export default function TabViewPage() {
         grid,
         strings,
         tempo ?? null,
-        timeSigTuple ?? [4, 4]
+        timeSigTuple ?? [4, 4],
       );
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_API}/tab-revisions`,
@@ -341,7 +341,7 @@ export default function TabViewPage() {
             message: message || "Edited in UI",
             score,
           }),
-        }
+        },
       );
       if (!res.ok) throw new Error("Save failed");
       const rev: Revision = await res.json();
@@ -486,7 +486,7 @@ export default function TabViewPage() {
                     onChange={(e) => {
                       const val = Math.max(
                         8,
-                        Math.min(128, parseInt(e.target.value || "32", 10))
+                        Math.min(128, parseInt(e.target.value || "32", 10)),
                       );
                       setColumns(val);
                       setGrid((g) =>
@@ -497,14 +497,14 @@ export default function TabViewPage() {
                               ...clone,
                               ...Array.from(
                                 { length: val - clone.length },
-                                () => null
+                                () => null,
                               ),
                             ];
                           } else {
                             clone.length = val;
                             return clone;
                           }
-                        })
+                        }),
                       );
                     }}
                   />
@@ -523,8 +523,8 @@ export default function TabViewPage() {
                       setStrings(parts);
                       setGrid(
                         Array.from({ length: parts.length }, () =>
-                          Array.from({ length: columns }, () => null)
-                        )
+                          Array.from({ length: columns }, () => null),
+                        ),
                       );
                     }}
                     placeholder="E4,B3,G3,D3,A2,E2"
@@ -603,7 +603,7 @@ export default function TabViewPage() {
                 <Textarea
                   value={ascii}
                   readOnly
-                  className="font-mono min-h-[180px]"
+                  className="font-mono min-h-45"
                 />
               </div>
             </div>

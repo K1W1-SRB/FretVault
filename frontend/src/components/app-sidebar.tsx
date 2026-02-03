@@ -26,12 +26,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Avatar } from "./ui/avatar";
-import { AvatarFallback } from "@radix-ui/react-avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import { useRouter } from "next/navigation";
 import { navMain } from "@/lib/utils";
+import { SettingsDialog } from "@/components/settings-dialog";
 
 // ------------------ Helpers ------------------
 function getInitials(name: string) {
@@ -52,6 +52,15 @@ export function AppSidebar() {
     accountType: string;
     avatar: string | null;
   } | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const handleUserUpdated = (nextUser: {
+    name: string;
+    email: string;
+    accountType: string;
+    avatar: string | null;
+  }) => {
+    setUser(nextUser);
+  };
 
   useEffect(() => {
     async function fetchUser() {
@@ -83,120 +92,154 @@ export function AppSidebar() {
   const displayName = user?.name || "Unknown User";
   const initials = getInitials(displayName);
   return (
-    <Sidebar collapsible="icon">
-      {/* Header with profile */}
-      <SidebarHeader>
-        <div className="flex w-full items-center px-2 py-2">
-          {/* Profile info */}
-          <div className="flex items-center gap-3">
-            <Avatar className="h-8 w-8 flex justify-center items-center bg-green-500">
-              <AvatarFallback>{initials}</AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col">
-              <span className="text-sm font-medium leading-tight">
-                {user?.name}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {user?.accountType || "Personal"}
-              </span>
+    <>
+      <Sidebar collapsible="icon">
+        {/* Header with profile */}
+        <SidebarHeader>
+          <div className="flex w-full items-center px-2 py-2">
+            {/* Profile info */}
+            <div className="flex items-center gap-3">
+              <Avatar className="h-8 w-8 flex justify-center items-center bg-green-500">
+                <AvatarImage src={user?.avatar ?? undefined} alt={displayName} />
+                <AvatarFallback>{initials}</AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col">
+                <span className="text-sm font-medium leading-tight">
+                  {user?.name}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {user?.accountType || "Personal"}
+                </span>
+              </div>
             </div>
+
+            {/* Logout button aligned right */}
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={handleLogout}
+              title="Logout"
+              className="ml-auto"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
+        </SidebarHeader>
 
-          {/* Logout button aligned right */}
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={handleLogout}
-            title="Logout"
-            className="ml-auto"
-          >
-            <LogOut className="h-4 w-4" />
-          </Button>
-        </div>
-      </SidebarHeader>
+        {/* Navigation */}
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {navMain.map((item) => {
+                  const Icon = item.icon;
+                  const active = pathname?.startsWith(item.href);
+                  const isSettings = item.href === "/dashboard/settings";
+                  const isSettingsActive = isSettings && settingsOpen;
 
-      {/* Navigation */}
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navMain.map((item) => {
-                const Icon = item.icon;
-                const active = pathname?.startsWith(item.href);
+                  if (item.items) {
+                    // has submenu → make it collapsible
+                    return (
+                      <Collapsible key={item.href} asChild defaultOpen={false}>
+                        <SidebarMenuItem>
+                          <CollapsibleTrigger asChild>
+                            <SidebarMenuButton
+                              tooltip={item.title}
+                              className={cn(
+                                "justify-between",
+                                active && "bg-accent text-accent-foreground"
+                              )}
+                            >
+                              <div className="flex items-center gap-2">
+                                <Icon className="size-4" />
+                                <span>{item.title}</span>
+                              </div>
+                              <ChevronDown className="ml-auto size-4 transition-transform duration-200 data-[state=open]:rotate-180" />
+                            </SidebarMenuButton>
+                          </CollapsibleTrigger>
 
-                if (item.items) {
-                  // has submenu → make it collapsible
-                  return (
-                    <Collapsible key={item.href} asChild defaultOpen={false}>
-                      <SidebarMenuItem>
-                        <CollapsibleTrigger asChild>
-                          <SidebarMenuButton
-                            tooltip={item.title}
-                            className={cn(
-                              "justify-between",
-                              active && "bg-accent text-accent-foreground"
-                            )}
-                          >
-                            <div className="flex items-center gap-2">
-                              <Icon className="size-4" />
-                              <span>{item.title}</span>
-                            </div>
-                            <ChevronDown className="ml-auto size-4 transition-transform duration-200 data-[state=open]:rotate-180" />
-                          </SidebarMenuButton>
-                        </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <SidebarMenuSub>
+                              {item.items.map((sub) => (
+                                <SidebarMenuSubItem key={sub.href}>
+                                  <SidebarMenuSubButton asChild>
+                                    <Link href={sub.href}>{sub.title}</Link>
+                                  </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                              ))}
+                            </SidebarMenuSub>
+                          </CollapsibleContent>
+                        </SidebarMenuItem>
+                      </Collapsible>
+                    );
+                  }
 
-                        <CollapsibleContent>
-                          <SidebarMenuSub>
-                            {item.items.map((sub) => (
-                              <SidebarMenuSubItem key={sub.href}>
-                                <SidebarMenuSubButton asChild>
-                                  <Link href={sub.href}>{sub.title}</Link>
-                                </SidebarMenuSubButton>
-                              </SidebarMenuSubItem>
-                            ))}
-                          </SidebarMenuSub>
-                        </CollapsibleContent>
+                  if (isSettings) {
+                    return (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton
+                          type="button"
+                          tooltip={item.title}
+                          aria-haspopup="dialog"
+                          aria-controls="settings-dialog"
+                          onClick={() => setSettingsOpen(true)}
+                          className={cn(
+                            (active || isSettingsActive) &&
+                              "bg-accent text-accent-foreground"
+                          )}
+                        >
+                          <Icon className="size-4" />
+                          <span>{item.title}</span>
+                        </SidebarMenuButton>
                       </SidebarMenuItem>
-                    </Collapsible>
+                    );
+                  }
+
+                  // regular link
+                  return (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton
+                        asChild
+                        tooltip={item.title}
+                        className={cn(
+                          active && "bg-accent text-accent-foreground"
+                        )}
+                      >
+                        <Link href={item.href}>
+                          <Icon className="size-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
                   );
-                }
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
 
-                // regular link
-                return (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton
-                      asChild
-                      tooltip={item.title}
-                      className={cn(
-                        active && "bg-accent text-accent-foreground"
-                      )}
-                    >
-                      <Link href={item.href}>
-                        <Icon className="size-4" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
+        {/* Footer with just name + email */}
+        <SidebarFooter>
+          <Separator />
+          <div className="px-2 py-3 text-left">
+            <p className="truncate text-sm font-medium">{user?.name}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {user?.email}
+            </p>
+          </div>
+        </SidebarFooter>
 
-      {/* Footer with just name + email */}
-      <SidebarFooter>
-        <Separator />
-        <div className="px-2 py-3 text-left">
-          <p className="truncate text-sm font-medium">{user?.name}</p>
-          <p className="truncate text-xs text-muted-foreground">
-            {user?.email}
-          </p>
-        </div>
-      </SidebarFooter>
+        <SidebarRail />
+      </Sidebar>
 
-      <SidebarRail />
-    </Sidebar>
+      <SettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        user={user}
+        displayName={displayName}
+        onUserUpdated={handleUserUpdated}
+      />
+    </>
   );
 }
