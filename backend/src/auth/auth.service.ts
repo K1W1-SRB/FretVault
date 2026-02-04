@@ -1,13 +1,16 @@
 // auth.service.ts
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { RegisterDto } from './dto/register.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { AuthUser } from './types/auth-user.type';
 import { AccountType, User } from '@prisma/client';
 import { WorkspacesService } from 'src/workspace/workspace.service';
@@ -79,6 +82,40 @@ export class AuthService {
     });
 
     await this.workspacesService.ensurePersonalWorkspace(user.id);
+
+    return this.toAuthUser(user);
+  }
+
+  async updateProfile(
+    userId: number,
+    dto: UpdateProfileDto,
+  ): Promise<AuthUser> {
+    const data: { name?: string; avatar?: string | null } = {};
+
+    if (dto.name !== undefined) {
+      const trimmed = dto.name.trim();
+      if (!trimmed) {
+        throw new BadRequestException('Name cannot be empty');
+      }
+      data.name = trimmed;
+    }
+
+    if (dto.avatar !== undefined) {
+      data.avatar = dto.avatar;
+    }
+
+    if (Object.keys(data).length === 0) {
+      const existing = await this.prisma.user.findUnique({
+        where: { id: userId },
+      });
+      if (!existing) throw new NotFoundException('User not found');
+      return this.toAuthUser(existing);
+    }
+
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data,
+    });
 
     return this.toAuthUser(user);
   }

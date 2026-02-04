@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Patch,
   Post,
   Req,
   Res,
@@ -11,15 +12,16 @@ import express from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UserSafeDto } from './dto/user-safe.dto';
 import { JwtAuthGuard } from './jwt-auth.guards';
 import type { AuthenticatedRequest } from './types/authenticated-request.type';
+import { User } from './user.decorator';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  // Return your own DTO shape (no token in body). Cookie holds the JWT.
   @Post('login')
   async login(
     @Body() dto: LoginDto,
@@ -29,13 +31,13 @@ export class AuthController {
     const { accessToken, cookieOptions } =
       this.authService.issueAccessToken(user);
     res.cookie('access_token', accessToken, cookieOptions);
-    return user; // <- matches UserSafeDto
+    return user;
   }
 
   @Post('register')
   async register(@Body() dto: RegisterDto): Promise<UserSafeDto> {
     const user = await this.authService.register(dto);
-    return user; // <- matches UserSafeDto
+    return user;
   }
 
   @Post('logout')
@@ -53,5 +55,14 @@ export class AuthController {
   @Get('me')
   me(@Req() req: AuthenticatedRequest): UserSafeDto {
     return req.user;
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('me')
+  async updateProfile(
+    @User('id') userId: number,
+    @Body() dto: UpdateProfileDto,
+  ): Promise<UserSafeDto> {
+    return this.authService.updateProfile(userId, dto);
   }
 }

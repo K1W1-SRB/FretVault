@@ -67,7 +67,7 @@ export default function PracticePlanView() {
           }),
           fetch(
             `${process.env.NEXT_PUBLIC_BACKEND_API}/practice-items/plans/${id}`,
-            { credentials: "include" }
+            { credentials: "include" },
           ),
         ]);
         if (!planRes.ok) throw new Error("Failed to fetch plan");
@@ -131,7 +131,7 @@ export default function PracticePlanView() {
             name: plan.name,
             description: plan.description,
           }),
-        }
+        },
       );
 
       // Create or update each item
@@ -151,7 +151,7 @@ export default function PracticePlanView() {
                 order: item.order,
                 category: item.category,
               }),
-            }
+            },
           );
         } else {
           // update existing
@@ -167,14 +167,14 @@ export default function PracticePlanView() {
                 order: item.order,
                 category: item.category,
               }),
-            }
+            },
           );
         }
       }
 
       const refreshed = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_API}/practice-items/plans/${plan.id}`,
-        { credentials: "include" }
+        { credentials: "include" },
       );
       const refreshedItems = await refreshed.json();
       setItems(refreshedItems);
@@ -302,7 +302,7 @@ export default function PracticePlanView() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[50px]">#</TableHead>
+                  <TableHead className="w-12.5">#</TableHead>
                   <TableHead>Item</TableHead>
                   <TableHead>Duration</TableHead>
                   <TableHead>Category</TableHead>

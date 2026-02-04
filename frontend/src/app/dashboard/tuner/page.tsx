@@ -51,6 +51,7 @@ export default function GuitarTuner() {
   const analyser = useRef<AnalyserNode | null>(null);
   const dataArray = useRef<Float32Array | null>(null);
   const source = useRef<MediaStreamAudioSourceNode | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
 
   const getNoteData = (frequency: number) => {
@@ -98,7 +99,22 @@ export default function GuitarTuner() {
       // ✅ Ensure context actually runs after a gesture
       await audioCtx.current.resume();
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const storedDeviceId =
+        typeof window !== "undefined"
+          ? window.localStorage.getItem("fv-settings-audio-input")
+          : null;
+      const constraints =
+        storedDeviceId && storedDeviceId !== "default"
+          ? { audio: { deviceId: { exact: storedDeviceId } } }
+          : { audio: true };
+
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
+      streamRef.current = stream;
       source.current = audioCtx.current.createMediaStreamSource(stream);
       analyser.current = audioCtx.current.createAnalyser();
       analyser.current.fftSize = 2048;
@@ -137,6 +153,10 @@ export default function GuitarTuner() {
   const stopTuner = () => {
     setIsListening(false);
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
     if (audioCtx.current) {
       audioCtx.current.close();
       audioCtx.current = null;
