@@ -42,6 +42,28 @@ enum WorkspaceRole {
   VIEWER
 }
 
+enum PracticeTargetType {
+  SONG
+  NOTE
+  DRILL
+  BLOCK
+  CUSTOM
+}
+
+enum FocusMetricType {
+  BPM
+  ACCURACY
+  REPS
+  NOTES
+  NONE
+}
+
+enum FocusDifficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
 model User {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
@@ -162,6 +184,40 @@ model PracticeItem {
   order       Int
 
   @@index([planId])
+}
+
+model FocusSession {
+  id          String @id @default(cuid())
+  userId      String
+  workspaceId String
+
+  targetId String
+  target   PracticeTarget @relation(fields: [targetId], references: [id])
+
+  startedAt   DateTime
+  endedAt     DateTime?
+  durationSec Int?
+
+  metricType  FocusMetricType
+  metricValue Float?
+
+  difficulty FocusDifficulty?
+  notes      String?
+
+  createdAt DateTime @default(now())
+}
+
+model PracticeTarget {
+  id          String @id @default(cuid())
+  userId      String
+  workspaceId String
+
+  type  PracticeTargetType
+  refId String? // nullable for CUSTOM
+  title String // snapshot title for history safety
+
+  createdAt     DateTime       @default(now())
+  focusSessions FocusSession[]
 }
 
 // --------------------

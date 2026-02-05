@@ -19,6 +19,9 @@ import { WorkspacesModule } from './workspace/workspace.module';
 import { WorkspacesService } from './workspace/workspace.service';
 import { NotesService } from './notes/notes.service';
 import { NotesModule } from './notes/notes.module';
+import { FocusSessionsModule } from './focus-sessions/focus-sessions.module';
+import { StatsModule } from './stats/stats.module';
+import { FocusTargetsModule } from './focus-targets/focus-targets.module';
 
 @Module({
   imports: [
@@ -30,6 +33,9 @@ import { NotesModule } from './notes/notes.module';
     PracticeItemsModule,
     WorkspacesModule,
     NotesModule,
+    FocusSessionsModule,
+    StatsModule,
+    FocusTargetsModule,
   ],
   controllers: [
     AppController,
