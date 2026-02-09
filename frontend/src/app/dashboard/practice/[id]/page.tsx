@@ -27,6 +27,8 @@ import {
 } from "@/components/ui/table";
 import SortableRow from "@/components/sortable-table";
 import { useParams, useRouter } from "next/navigation";
+import { notesApi } from "@/lib/notes-api";
+import type { NoteListItem } from "@/app/dashboard/notebook/types";
 
 type PracticeItem = {
   id: number;
@@ -34,6 +36,8 @@ type PracticeItem = {
   duration: number;
   order: number;
   category: string;
+  targetType?: "NOTE" | "SONG" | null;
+  targetRefId?: string | null;
 };
 
 type PracticePlan = {
@@ -46,6 +50,12 @@ type PracticePlan = {
   items: PracticeItem[];
 };
 
+type SongOption = {
+  id: number;
+  title: string;
+  artist?: string | null;
+};
+
 export default function PracticePlanView() {
   const params = useParams();
   const id = params?.id;
@@ -53,6 +63,8 @@ export default function PracticePlanView() {
   const [editMode, setEditMode] = useState(false);
   const [plan, setPlan] = useState<PracticePlan | null>(null);
   const [items, setItems] = useState<PracticeItem[]>([]);
+  const [notes, setNotes] = useState<NoteListItem[]>([]);
+  const [songs, setSongs] = useState<SongOption[]>([]);
   const sensors = useSensors(useSensor(PointerSensor));
   const router = useRouter();
 
@@ -99,6 +111,46 @@ export default function PracticePlanView() {
     };
   }, [id]);
 
+  useEffect(() => {
+    let cancelled = false;
+    async function loadNotes() {
+      if (!plan?.workspaceId) return;
+      try {
+        const data = await notesApi.list(plan.workspaceId);
+        if (!cancelled) setNotes(data);
+      } catch (err) {
+        console.error(err);
+        if (!cancelled) setNotes([]);
+      }
+    }
+    loadNotes();
+    return () => {
+      cancelled = true;
+    };
+  }, [plan?.workspaceId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadSongs() {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_API}/songs`,
+          { credentials: "include" },
+        );
+        if (!res.ok) throw new Error("Failed to fetch songs");
+        const data = await res.json();
+        if (!cancelled) setSongs(data);
+      } catch (err) {
+        console.error(err);
+        if (!cancelled) setSongs([]);
+      }
+    }
+    loadSongs();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // 🔹 Add new item locally (negative temp id)
   const handleAddItem = () => {
     const newItem: PracticeItem = {
@@ -106,7 +158,9 @@ export default function PracticePlanView() {
       title: "",
       duration: 0,
       order: items.length + 1,
-      category: "GENERAL",
+      category: "WARMUP",
+      targetType: null,
+      targetRefId: null,
     };
     setItems([...items, newItem]);
     setTimeout(() => {
@@ -150,6 +204,8 @@ export default function PracticePlanView() {
                 duration: item.duration ?? 0,
                 order: item.order,
                 category: item.category,
+                targetType: item.targetType ?? null,
+                targetRefId: item.targetRefId ?? null,
               }),
             },
           );
@@ -166,6 +222,8 @@ export default function PracticePlanView() {
                 duration: item.duration,
                 order: item.order,
                 category: item.category,
+                targetType: item.targetType ?? null,
+                targetRefId: item.targetRefId ?? null,
               }),
             },
           );
@@ -306,6 +364,8 @@ export default function PracticePlanView() {
                   <TableHead>Item</TableHead>
                   <TableHead>Duration</TableHead>
                   <TableHead>Category</TableHead>
+                  <TableHead>Link Type</TableHead>
+                  <TableHead>Link</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -316,6 +376,8 @@ export default function PracticePlanView() {
                     editMode={editMode}
                     items={items}
                     setItems={setItems}
+                    notes={notes}
+                    songs={songs}
                   />
                 ))}
               </TableBody>

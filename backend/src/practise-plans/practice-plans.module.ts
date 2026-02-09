@@ -4,9 +4,10 @@ import { PracticePlansService } from './practice-plans.service';
 import { PrismaService } from 'prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { AuthModule } from 'src/auth/auth.module';
+import { WorkspacesModule } from 'src/workspace/workspace.module';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, WorkspacesModule],
   controllers: [PracticePlansController],
   providers: [PracticePlansService, PrismaService, JwtService],
   exports: [PracticePlansService],

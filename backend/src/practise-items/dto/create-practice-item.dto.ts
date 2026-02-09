@@ -6,6 +6,7 @@ import {
   IsString,
   Min,
 } from 'class-validator';
+import { PracticeTargetType } from '@prisma/client';
 import { PracticeCategory } from '../types/practice-item.types';
 
 export class CreatePracticeItemDto {
@@ -31,4 +32,12 @@ export class CreatePracticeItemDto {
   @IsInt()
   @Min(0)
   order: number;
+
+  @IsOptional()
+  @IsEnum(PracticeTargetType)
+  targetType?: PracticeTargetType;
+
+  @IsOptional()
+  @IsString()
+  targetRefId?: string;
 }

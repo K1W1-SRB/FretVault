@@ -134,14 +134,17 @@ export function AppSidebar() {
               <SidebarMenu>
                 {navMain.map((item) => {
                   const Icon = item.icon;
-                  const active = pathname?.startsWith(item.href);
+                  const isSubActive = item.items?.some((sub) =>
+                    pathname?.startsWith(sub.href),
+                  );
+                  const active = pathname?.startsWith(item.href) || isSubActive;
                   const isSettings = item.href === "/dashboard/settings";
                   const isSettingsActive = isSettings && settingsOpen;
 
                   if (item.items) {
                     // has submenu → make it collapsible
                     return (
-                      <Collapsible key={item.href} asChild defaultOpen={false}>
+                      <Collapsible key={item.href} asChild defaultOpen={active}>
                         <SidebarMenuItem>
                           <CollapsibleTrigger asChild>
                             <SidebarMenuButton
