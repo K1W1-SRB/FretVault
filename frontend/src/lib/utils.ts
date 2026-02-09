@@ -52,8 +52,8 @@ export const navMain = [
     href: "/dashboard/zones",
     icon: Guitar,
     items: [
-      { title: "Practice Zone", href: "/zones/practice" },
-      { title: "Performance Zone", href: "/zones/performance" },
+      { title: "Practice Zone", href: "/dashboard/zones/practice" },
+      { title: "Performance Zone", href: "/dashboard/zones/performance" },
     ],
   },
   {

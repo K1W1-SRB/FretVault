@@ -182,6 +182,8 @@ model PracticeItem {
   duration    Int
   description String?
   order       Int
+  targetType  PracticeTargetType?
+  targetRefId String?
 
   @@index([planId])
 }

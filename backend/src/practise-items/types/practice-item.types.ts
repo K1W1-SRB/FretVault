@@ -16,6 +16,8 @@ export interface PracticeItem {
   description?: string;
   order: number;
   planId: number;
+  targetType?: string | null;
+  targetRefId?: string | null;
   createdAt: Date;
 }
 

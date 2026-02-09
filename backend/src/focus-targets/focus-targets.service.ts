@@ -52,9 +52,7 @@ export class FocusTargetsService {
       workspaceId: query.workspaceId,
       ...(query.type ? { type: query.type } : {}),
       ...(query.refId ? { refId: query.refId } : {}),
-      ...(query.q
-        ? { title: { contains: query.q, mode: 'insensitive' } }
-        : {}),
+      ...(query.q ? { title: { contains: query.q, mode: 'insensitive' } } : {}),
     };
 
     return this.prisma.practiceTarget.findMany({

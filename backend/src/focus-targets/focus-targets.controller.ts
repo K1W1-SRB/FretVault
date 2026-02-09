@@ -22,10 +22,7 @@ export class FocusTargetsController {
   constructor(private readonly focusTargets: FocusTargetsService) {}
 
   @Post()
-  create(
-    @User('id') userId: number,
-    @Body() dto: CreateFocusTargetDto,
-  ) {
+  create(@User('id') userId: number, @Body() dto: CreateFocusTargetDto) {
     return this.focusTargets.create(userId, dto);
   }
 

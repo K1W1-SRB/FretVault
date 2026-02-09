@@ -77,7 +77,9 @@ export class FocusSessionsService {
 
     if (dto.metricValue !== undefined && dto.metricType === undefined) {
       if (session.metricType === FocusMetricType.NONE) {
-        throw new BadRequestException('metricType required when metricValue set');
+        throw new BadRequestException(
+          'metricType required when metricValue set',
+        );
       }
     }
 
@@ -91,7 +93,7 @@ export class FocusSessionsService {
     const metricValue =
       metricType === FocusMetricType.NONE
         ? null
-        : dto.metricValue ?? session.metricValue ?? null;
+        : (dto.metricValue ?? session.metricValue ?? null);
 
     return this.prisma.focusSession.update({
       where: { id },

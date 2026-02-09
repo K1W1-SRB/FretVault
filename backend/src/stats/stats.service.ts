@@ -68,7 +68,9 @@ export class StatsService {
     if (!session.endedAt) return 0;
     return Math.max(
       0,
-      Math.floor((session.endedAt.getTime() - session.startedAt.getTime()) / 1000),
+      Math.floor(
+        (session.endedAt.getTime() - session.startedAt.getTime()) / 1000,
+      ),
     );
   }
 
