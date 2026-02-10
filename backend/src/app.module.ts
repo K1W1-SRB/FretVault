@@ -22,6 +22,7 @@ import { NotesModule } from './notes/notes.module';
 import { FocusSessionsModule } from './focus-sessions/focus-sessions.module';
 import { StatsModule } from './stats/stats.module';
 import { FocusTargetsModule } from './focus-targets/focus-targets.module';
+import { AssetsModule } from './assets/assets.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { FocusTargetsModule } from './focus-targets/focus-targets.module';
     FocusSessionsModule,
     StatsModule,
     FocusTargetsModule,
+    AssetsModule,
   ],
   controllers: [
     AppController,

@@ -64,6 +64,26 @@ enum FocusDifficulty {
   HARD
 }
 
+enum AssetStatus {
+  PENDING_UPLOAD
+  UPLOADED
+  VERIFIED
+  FAILED
+}
+
+enum ExportJobStatus {
+  QUEUED
+  RUNNING
+  DONE
+  FAILED
+}
+
+enum ExportFormat {
+  WAV
+  MP3
+  MP4
+}
+
 model User {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
@@ -174,9 +194,9 @@ model PracticePlan {
 }
 
 model PracticeItem {
-  id          Int              @id @default(autoincrement())
+  id          Int                 @id @default(autoincrement())
   planId      Int
-  plan        PracticePlan     @relation(fields: [planId], references: [id])
+  plan        PracticePlan        @relation(fields: [planId], references: [id])
   title       String
   category    PracticeCategory
   duration    Int
@@ -241,8 +261,13 @@ model Workspace {
   tags  Tag[]
 
   // Optional legacy bridge (since Song/PracticePlan have workspaceId?)
-  songs Song[]
-  plans PracticePlan[]
+  songs               Song[]
+  plans               PracticePlan[]
+  performanceProjects PerformanceProject[]
+  performanceTracks   PerformanceTrack[]
+  performanceClips    PerformanceClip[]
+  assets              Asset[]
+  exportJobs          ExportJob[]
 
   @@index([type])
 }
@@ -361,4 +386,122 @@ model NoteBlock {
   updatedAt DateTime @updatedAt
 
   @@index([noteId, type])
+}
+
+model PerformanceProject {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  name       String
+  bpm        Int
+  sampleRate Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tracks     PerformanceTrack[]
+  clips      PerformanceClip[]
+  exportJobs ExportJob[]
+
+  @@index([workspaceId])
+}
+
+model PerformanceTrack {
+  id          String    @id @default(cuid())
+  workspaceId String
+  projectId   String
+
+  workspace Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project   PerformanceProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  index  Int
+  name   String
+  gainDb Float  @default(0)
+  pan    Float  @default(0)
+  mute   Boolean @default(false)
+  solo   Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  clips PerformanceClip[]
+
+  @@unique([projectId, index])
+  @@index([workspaceId])
+  @@index([projectId])
+}
+
+model PerformanceClip {
+  id          String    @id @default(cuid())
+  workspaceId String
+  projectId   String
+  trackId     String
+  assetId     String
+
+  workspace Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project   PerformanceProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  track     PerformanceTrack   @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  asset     Asset              @relation(fields: [assetId], references: [id], onDelete: Restrict)
+
+  startMs         Int
+  durationMs      Int
+  offsetInAssetMs Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workspaceId])
+  @@index([projectId])
+  @@index([trackId])
+  @@index([assetId])
+}
+
+model Asset {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  key         String
+  bucket      String
+  contentType String
+  byteSize    Int?
+  sha256      String?
+  durationMs  Int?
+  sampleRate  Int?
+  channels    Int?
+  status      AssetStatus @default(PENDING_UPLOAD)
+  waveformPeaks Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  clips      PerformanceClip[]
+  exportJobs ExportJob[] @relation("ExportJobOutput")
+
+  @@unique([workspaceId, key])
+  @@index([workspaceId])
+  @@index([status])
+}
+
+model ExportJob {
+  id          String    @id @default(cuid())
+  workspaceId String
+  projectId   String
+  outAssetId  String?
+
+  workspace Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project   PerformanceProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  outAsset  Asset?             @relation("ExportJobOutput", fields: [outAssetId], references: [id], onDelete: SetNull)
+
+  status ExportJobStatus @default(QUEUED)
+  format ExportFormat
+  error  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workspaceId])
+  @@index([projectId])
+  @@index([status])
 }
