@@ -10,6 +10,7 @@ import { AssetStatus } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { PrismaService } from 'prisma/prisma.service';
 import { R2StorageService } from 'src/storage/r2-storage.service';
+import { BulkDownloadUrlsDto } from './dto/bulk-download-urls.dto';
 import { FinalizeAssetDto } from './dto/finalize-asset.dto';
 import { PresignAssetDto } from './dto/presign-asset.dto';
 
@@ -236,6 +237,47 @@ export class AssetsService implements OnModuleInit, OnModuleDestroy {
       url,
       expiresAt: new Date(Date.now() + this.presignTtlSec * 1000).toISOString(),
     };
+  }
+
+  async getDownloadUrls(dto: BulkDownloadUrlsDto, userId: number) {
+    const assetIds = Array.from(
+      new Set((dto.assetIds ?? []).map((id) => id?.trim()).filter(Boolean)),
+    );
+
+    if (assetIds.length === 0) {
+      throw new BadRequestException('assetIds is required');
+    }
+
+    const assets = await this.prisma.asset.findMany({
+      where: { id: { in: assetIds } },
+    });
+
+    if (assets.length !== assetIds.length) {
+      throw new NotFoundException('One or more assets not found');
+    }
+
+    const expiresAt = new Date(
+      Date.now() + this.presignTtlSec * 1000,
+    ).toISOString();
+    const urls: Record<string, { url: string; expiresAt: string }> = {};
+
+    for (const asset of assets) {
+      await this.ensureMembership(asset.workspaceId, userId);
+      if (asset.status !== AssetStatus.VERIFIED) {
+        throw new BadRequestException(
+          `Asset ${asset.id} is not ready for download`,
+        );
+      }
+
+      const url = await this.storage.presignGetObject({
+        key: asset.key,
+        expiresInSeconds: this.presignTtlSec,
+      });
+
+      urls[asset.id] = { url, expiresAt };
+    }
+
+    return { urls };
   }
 
   private async cleanupPendingUploads() {
