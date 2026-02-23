@@ -1,4 +1,13 @@
-import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
 
 export class FinalizeAssetDto {
   @IsInt()
@@ -21,4 +30,10 @@ export class FinalizeAssetDto {
   @Min(1)
   @Max(8)
   channels!: number;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(2048)
+  @IsNumber({}, { each: true })
+  waveformPeaks?: number[];
 }

@@ -24,12 +24,6 @@ import { StatsModule } from './stats/stats.module';
 import { FocusTargetsModule } from './focus-targets/focus-targets.module';
 import { AssetsModule } from './assets/assets.module';
 import { ProjectsModule } from './preformance/perforance.module';
-import { PerformanceProjectService } from './preformance/performance-projects.service';
-import { PerformanceProjectsController } from './preformance/performance-projects.controller';
-import { PerformanceTrackController } from './preformance/performance-tracks.controller';
-import { PerformanceClipsController } from './preformance/performance-clips.controller';
-import { PerformanceTracksService } from './preformance/performance-tracks.service';
-import { PerformanceClipsService } from './preformance/performance-clips.service';
 
 @Module({
   imports: [
@@ -52,9 +46,6 @@ import { PerformanceClipsService } from './preformance/performance-clips.service
     RedocController,
     SongsController,
     TabRevisionsController,
-    PerformanceProjectsController,
-    PerformanceTrackController,
-    PerformanceClipsController,
   ],
   providers: [
     AppService,
@@ -67,9 +58,6 @@ import { PerformanceClipsService } from './preformance/performance-clips.service
     PracticeItemsService,
     WorkspacesService,
     NotesService,
-    PerformanceProjectService,
-    PerformanceTracksService,
-    PerformanceClipsService,
   ],
 })
 export class AppModule {}

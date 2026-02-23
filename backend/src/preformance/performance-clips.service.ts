@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -36,6 +37,16 @@ export class PerformanceClipsService {
       throw new ForbiddenException('Asset is not ready for use');
     }
 
+    const assetDurationMs = asset.durationMs;
+    if (assetDurationMs == null) {
+      throw new BadRequestException('Asset duration is unknown');
+    }
+
+    const offsetInAssetMs = dto.offsetInAssetMs ?? 0;
+    if (offsetInAssetMs + dto.durationMs > assetDurationMs) {
+      throw new BadRequestException('Clip exceeds asset duration');
+    }
+
     return this.prisma.performanceClip.create({
       data: {
         workspaceId: track.workspaceId,
@@ -54,10 +65,28 @@ export class PerformanceClipsService {
   async update(clipId: string, dto: UpdatePerformanceClipDto) {
     const clip = await this.prisma.performanceClip.findUnique({
       where: { id: clipId },
+      include: {
+        asset: {
+          select: { durationMs: true },
+        },
+      },
     });
 
     if (!clip) {
       throw new NotFoundException('Clip not found');
+    }
+
+    if (dto.durationMs !== undefined || dto.offsetInAssetMs !== undefined) {
+      const assetDurationMs = clip.asset?.durationMs;
+      if (assetDurationMs == null) {
+        throw new BadRequestException('Asset duration is unknown');
+      }
+
+      const durationMs = dto.durationMs ?? clip.durationMs;
+      const offsetInAssetMs = dto.offsetInAssetMs ?? clip.offsetInAssetMs;
+      if (offsetInAssetMs + durationMs > assetDurationMs) {
+        throw new BadRequestException('Clip exceeds asset duration');
+      }
     }
 
     return this.prisma.performanceClip.update({

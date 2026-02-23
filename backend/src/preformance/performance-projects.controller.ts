@@ -10,7 +10,6 @@ import {
 } from '@nestjs/common';
 import { PerformanceProjectService } from './performance-projects.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guards';
-import { User } from 'src/auth/user.decorator';
 import { CreatePerformanceProjectDto } from './dto/create-performance-project.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { UpdatePerformanceProjectDto } from './dto/update-performance-project.dto';

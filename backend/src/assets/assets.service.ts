@@ -209,6 +209,7 @@ export class AssetsService implements OnModuleInit, OnModuleDestroy {
         durationMs: dto.durationMs,
         sampleRate: dto.sampleRate,
         channels: dto.channels,
+        ...(dto.waveformPeaks ? { waveformPeaks: dto.waveformPeaks } : {}),
         status: AssetStatus.VERIFIED,
       },
     });
