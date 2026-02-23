@@ -21,6 +21,8 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.986.0",
+    "@aws-sdk/s3-request-presigner": "^3.986.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
     "@nestjs/jwt": "^11.0.0",
@@ -34,6 +36,7 @@
     "class-validator": "^0.14.2",
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.2.1",
+    "ffmpeg-static": "^5.2.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "prisma": "^6.13.0",
